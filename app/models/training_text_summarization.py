@@ -1,6 +1,6 @@
 import os
 # Force all operations to run on CPU by disabling all GPUs.
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 
 import json
 import numpy as np
