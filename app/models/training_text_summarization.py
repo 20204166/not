@@ -12,7 +12,7 @@ import tensorflow as tf
 tf.config.optimizer.set_jit(True)
 
 # Adjust threading to balance workload on CPU:
-num_threads = os.cpu_count() or 8  # Fallback to 6 if os.cpu_count() returns None
+num_threads = os.cpu_count() or 6 # Fallback to 6 if os.cpu_count() returns None
 tf.config.threading.set_intra_op_parallelism_threads(num_threads)
 tf.config.threading.set_inter_op_parallelism_threads(num_threads)
 
