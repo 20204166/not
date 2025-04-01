@@ -1,10 +1,25 @@
-tensorflow
-torch
-transformers
-flask
-numpy
-pandas
-scikit-learn
+# TensorFlow and related packages
+tensorflow==2.18.0
+tensorflow-text==2.18.0
+
+# PyTorch and related packages
+torch==2.6.0
+# (If you need torchaudio/torchvision and they are available for your setup, you can add them)
+# torchaudio==2.6.0
+# torchvision==2.6.0
+
+# Transformers and tokenizers
+transformers==4.41.0
+tokenizers==0.13.3
+
+# Data manipulation
+pandas==2.2.2
+numpy==1.25.2
+
+# Machine learning utilities
+scikit-learn==1.3.2
+
+# Web framework and others
+flask==2.2.2
 speechrecognition==3.8.1
-librosa
-matplotlib
+
