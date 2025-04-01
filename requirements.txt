@@ -22,3 +22,5 @@ scikit-learn
 # Web framework and others
 flask
 speechrecognition
+
+datasets
