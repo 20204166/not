@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # File: test.py
 
 import tensorflow as tf
@@ -6,6 +7,8 @@ import numpy as np
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import json
 =======
+=======
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
 # File: experiments/qualitative_review.py
 
 import tensorflow as tf
@@ -15,6 +18,9 @@ import numpy as np
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import json
 import os
+<<<<<<< HEAD
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
+=======
 >>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
 
 def load_tokenizer(tokenizer_path: str):
@@ -32,6 +38,7 @@ def load_tokenizer(tokenizer_path: str):
     return tf.keras.preprocessing.text.tokenizer_from_json(tokenizer_json)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 def generate_summary(model, tokenizer_input, tokenizer_target, input_text: str, max_length_input: int, max_length_target: int) -> str:
     """
     Generate a summary for the provided input text using a greedy decoding approach.
@@ -46,6 +53,8 @@ def generate_summary(model, tokenizer_input, tokenizer_target, input_text: str, 
         max_length_input (int): Maximum sequence length for input.
         max_length_target (int): Maximum sequence length for the generated summary.
 =======
+=======
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
 def generate_summary_inference(model, tokenizer_input, tokenizer_target, input_text: str, max_length_input: int, max_length_target: int) -> str:
     """
     Generate a summary for a given input text using a simple iterative (greedy) decoding loop.
@@ -59,6 +68,9 @@ def generate_summary_inference(model, tokenizer_input, tokenizer_target, input_t
         input_text (str): The text to summarize.
         max_length_input (int): Maximum length for input sequences.
         max_length_target (int): Maximum length for target sequences.
+<<<<<<< HEAD
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
+=======
 >>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
     
     Returns:
@@ -68,6 +80,7 @@ def generate_summary_inference(model, tokenizer_input, tokenizer_target, input_t
     seq = tokenizer_input.texts_to_sequences([input_text])
     encoder_input = pad_sequences(seq, maxlen=max_length_input, padding='post')
     
+<<<<<<< HEAD
 <<<<<<< HEAD
     # Initialize decoder input with zeros and set the start token.
     decoder_input = np.zeros((1, max_length_target), dtype='int32')
@@ -86,6 +99,8 @@ def generate_summary_inference(model, tokenizer_input, tokenizer_target, input_t
         if next_token == end_token:
             break
 =======
+=======
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
     # Initialize the decoder input array with all zeros.
     decoder_input = np.zeros((1, max_length_target), dtype='int32')
     start_token = 1  # assumed index for <start>
@@ -103,13 +118,20 @@ def generate_summary_inference(model, tokenizer_input, tokenizer_target, input_t
         if next_token == end_token:
             break
         # Get the word for the predicted token.
+<<<<<<< HEAD
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
+=======
 >>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
         word = tokenizer_target.index_word.get(next_token, "")
         if not word:
             break
         summary_generated.append(word)
 <<<<<<< HEAD
+<<<<<<< HEAD
         # Update decoder_input at time step t.
+=======
+        # Update the decoder input for the next time step.
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
 =======
         # Update the decoder input for the next time step.
 >>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
@@ -117,6 +139,7 @@ def generate_summary_inference(model, tokenizer_input, tokenizer_target, input_t
 
     return " ".join(summary_generated)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 def main():
     # Define paths for your model and tokenizers.
@@ -144,6 +167,8 @@ def main():
         summary = generate_summary(model, tokenizer_input, tokenizer_target, text, max_length_input, max_length_target)
         print(f"Sample {i}:")
 =======
+=======
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
 def interactive_review(model, tokenizer_input, tokenizer_target, max_length_input: int, max_length_target: int):
     """
     Run an interactive loop that prompts the user for input text, generates a summary,
@@ -193,17 +218,23 @@ def qualitative_review(model_path: str, tokenizer_input_path: str, tokenizer_tar
     for i, text in enumerate(sample_texts):
         summary = generate_summary_inference(model, tokenizer_input, tokenizer_target, text, max_length_input, max_length_target)
         print(f"Sample {i+1}:")
+<<<<<<< HEAD
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
+=======
 >>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
         print("Original Text:")
         print(text)
         print("\nGenerated Summary:")
         print(summary)
 <<<<<<< HEAD
+<<<<<<< HEAD
         print("\n" + "-" * 50 + "\n")
 
 if __name__ == "__main__":
     main()
 =======
+=======
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
         print("\n" + "-"*50 + "\n")
     
     # Enter interactive mode.
@@ -221,4 +252,7 @@ if __name__ == "__main__":
     
     qualitative_review(model_path, tokenizer_input_path, tokenizer_target_path, max_length_input, max_length_target)
 
+<<<<<<< HEAD
+>>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
+=======
 >>>>>>> 1786abc (Remove app/__init__.py and add tests directory)
