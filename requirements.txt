@@ -1,7 +1,7 @@
 # TensorFlow and related packages
 tensorflow==2.17.1
 tensorflow-text==2.17.0
-
+protobuf==4.25.6
 
 # PyTorch and related packages
 torch
@@ -24,4 +24,5 @@ scikit-learn
 flask
 speechrecognition
 
+# Datasets library
 datasets
