@@ -1,26 +1,25 @@
 import os
-# Remove or comment out any line that forces CPU usage (e.g. CUDA_VISIBLE_DEVICES = -1).
+import tensorflow as tf
+
+# Optionally, set GPU memory growth to allow TensorFlow to allocate GPU memory on demand.
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print("GPU devices found:", gpus)
+    except RuntimeError as e:
+        print("Error setting GPU memory growth:", e)
+else:
+    print("No GPU found. TensorFlow will default to CPU if no GPU is present.")
 
 import json
 import numpy as np
 import matplotlib.pyplot as plt  # Ensure matplotlib is installed
 import re  # For cleaning text if needed
-import tensorflow as tf
-
-# Check if a GPU is available and print a message.
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    print("GPU devices found:", gpus)
-else:
-    print("No GPU found. TensorFlow will default to CPU if no GPU is present.")
 
 # Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations.
 tf.config.optimizer.set_jit(True)
-
-# Remove or comment out CPU threading adjustments to rely on TensorFlow defaults.
-# num_threads = os.cpu_count() or 6
-# tf.config.threading.set_intra_op_parallelism_threads(num_threads)
-# tf.config.threading.set_inter_op_parallelism_threads(num_threads)
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Embedding, Dense, Concatenate, Attention, LSTMCell
@@ -137,7 +136,6 @@ def build_seq2seq_model(vocab_size_input: int, vocab_size_target: int,
     decoder_outputs = decoder_dense(decoder_combined_context)
 
     model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
-    # Set a custom learning rate.
     custom_learning_rate = 0.001
     optimizer = Adam(learning_rate=custom_learning_rate)
     model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
@@ -164,7 +162,6 @@ def plot_training_history(history, save_dir: str):
     plt.show()
     print(f"Training history plot saved to: {plot_path}")
 
-# --- Custom Callback for Additional Evaluation ---
 class CustomEvaluationCallback(Callback):
     def __init__(self, val_dataset, tokenizer_target):
         super().__init__()
@@ -198,17 +195,14 @@ def train_model(data_path: str, epochs: int = 10,
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
     tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
 
-    # Load the raw training data.
     input_texts, target_texts = load_training_data(data_path)
 
-    # --- Split data into training and validation sets (90/10 split) ---
     split_index = int(len(input_texts) * 0.9)
     train_inputs = input_texts[:split_index]
     train_targets = target_texts[:split_index]
     val_inputs = input_texts[split_index:]
     val_targets = target_texts[split_index:]
 
-    # Load or create tokenizers to ensure tokenizer consistency.
     if os.path.exists(tokenizer_input_path) and os.path.exists(tokenizer_target_path) and not force_rebuild:
         print("Loading tokenizers from saved files...")
         tokenizer_input = load_tokenizer(tokenizer_input_path)
@@ -221,7 +215,6 @@ def train_model(data_path: str, epochs: int = 10,
     vocab_size_input = len(tokenizer_input.word_index) + 1
     vocab_size_target = len(tokenizer_target.word_index) + 1
 
-    # Create tf.data.Dataset pipelines for training and validation.
     train_dataset = create_dataset(train_inputs, train_targets, batch_size, tokenizer_input, tokenizer_target)
     val_dataset = create_dataset(val_inputs, val_targets, batch_size, tokenizer_input, tokenizer_target)
 
@@ -249,7 +242,6 @@ def train_model(data_path: str, epochs: int = 10,
         validation_data=val_dataset
     )
 
-    # Save tokenizers to JSON.
     with open(tokenizer_input_path, "w", encoding="utf-8") as f:
         f.write(tokenizer_input.to_json())
     with open(tokenizer_target_path, "w", encoding="utf-8") as f:
