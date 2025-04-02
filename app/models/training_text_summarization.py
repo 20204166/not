@@ -1,6 +1,6 @@
 import os
-# Force all operations to run on CPU by disabling all GPUs.
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+# Remove or comment out the line that forces CPU-only execution.
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import json
 import numpy as np
@@ -8,11 +8,18 @@ import matplotlib.pyplot as plt  # Ensure matplotlib is installed
 import re  # For cleaning text if needed
 import tensorflow as tf
 
+# Optionally, check if a GPU is available and print a message.
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    print("GPU devices found:", gpus)
+else:
+    print("No GPU found, running on CPU.")
+
 # Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations.
 tf.config.optimizer.set_jit(True)
 
 # Adjust threading to balance workload on CPU:
-num_threads = os.cpu_count() or 6 # Fallback to 6 if os.cpu_count() returns None
+num_threads = os.cpu_count() or 6  # Fallback to 6 if os.cpu_count() returns None
 tf.config.threading.set_intra_op_parallelism_threads(num_threads)
 tf.config.threading.set_inter_op_parallelism_threads(num_threads)
 
@@ -23,7 +30,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
 from tensorflow.keras.optimizers import Adam
 
-print("Running on CPU only.")
+print("Running with GPU support (if available).")
 
 # Global settings for maximum sequence lengths.
 max_length_input = 50
@@ -230,7 +237,7 @@ def train_model(data_path: str, epochs: int = 10,
     checkpoint = ModelCheckpoint(model_path, monitor='loss', save_best_only=True, verbose=1)
     custom_eval = CustomEvaluationCallback(val_dataset, tokenizer_target)
 
-    print("Training will run on CPU using the tf.data pipeline.")
+    print("Training will run on CPU using the tf.data pipeline." if not gpus else "Training will run on GPU using the tf.data pipeline.")
     history = model.fit(
         train_dataset,
         epochs=epochs,
