@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
 
-# Enable GPU memory growth so TensorFlow allocates GPU memory on demand.
+# Optionally, set GPU memory growth to allow TensorFlow to allocate memory on demand.
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
     try:
