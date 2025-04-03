@@ -1,38 +1,31 @@
-# Let pip choose a TensorFlow version that’s compatible with Colab’s GPU libraries.
-tensorflow>=2.17.1,<2.19
-
-# Remove or comment out the keras line
-
-# Specify a matching range for TensorFlow Text.
-tensorflow-text>=2.17.0,<2.19
-
-# Use a protobuf version compatible with TensorFlow 2.17.x.
+# TensorFlow and related packages (using TF 2.17.1 for Colab GPU compatibility)
+tensorflow==2.17.1
+tensorflow-text==2.17.0
 protobuf==4.25.6
 
-# gcsfs requires a specific fsspec version.
+# For gcsfs compatibility
 fsspec==2025.3.0
 
+# Data manipulation (Colab expects these versions)
+pandas==2.2.2
+numpy==1.26.4
 
-# PyTorch and related packages (un-pinned to let pip choose compatible versions)
-torch
-# Uncomment if needed:
+# PyTorch and related packages (to satisfy packages like accelerate and torchvision)
+torch==2.6.0
+# Uncomment these if needed:
 # torchaudio
 # torchvision
 
-# Transformers and tokenizers.
-transformers
-tokenizers
+# Transformers and tokenizers
+transformers==4.26.1
+tokenizers==0.13.3
 
-# Data manipulation.
-pandas
-numpy
+# Machine learning utilities
+scikit-learn==1.6.1
 
-# Machine learning utilities.
-scikit-learn
+# Web framework and others
+flask==2.2.2
+speechrecognition==3.14.2
 
-# Web framework and others.
-flask
-speechrecognition
-
-# Datasets library.
-datasets
+# Datasets library
+datasets==2.14.4
