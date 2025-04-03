@@ -1,6 +1,8 @@
 # Let pip choose a TensorFlow version that’s compatible with Colab’s GPU libraries.
 tensorflow>=2.17.1,<2.19
+
 # Remove or comment out the keras line
+
 # Specify a matching range for TensorFlow Text.
 tensorflow-text>=2.17.0,<2.19
 
@@ -10,8 +12,6 @@ protobuf==4.25.6
 # gcsfs requires a specific fsspec version.
 fsspec==2025.3.0
 
-
-protobuf==4.25.6
 
 # PyTorch and related packages (un-pinned to let pip choose compatible versions)
 torch
