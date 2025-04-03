@@ -10,7 +10,7 @@ def clean_text(text: str) -> str:
     Clean the input text by removing unwanted characters and extra whitespace.
     
     Args:
-        text (str): The full text.
+        text (str): The original text.
     
     Returns:
         str: The cleaned text.
@@ -42,7 +42,7 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
     ends with a sentence-ending punctuation if possible.
     
     Args:
-        text (str): The summary text to truncate.
+        text (str): The summary text.
         max_words (int): Maximum number of words to retain.
         
     Returns:
@@ -63,6 +63,7 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
         if pos > last_pos:
             last_pos = pos
     if last_pos != -1:
+        # Return the text up to and including the punctuation.
         return truncated[:last_pos+1].strip()
     else:
         return truncated + '.'
@@ -103,7 +104,7 @@ def save_cnn_dailymail_data(output_file: str):
             "summary": truncated_summary
         })
     
-    # Ensure that the output directory exists
+    # Ensure the output directory exists.
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     
     with open(output_file, "w", encoding="utf-8") as f:
