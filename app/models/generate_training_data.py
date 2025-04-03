@@ -3,13 +3,14 @@
 from datasets import load_dataset
 import json
 import re
+import os
 
 def clean_text(text: str) -> str:
     """
     Clean the input text by removing unwanted characters and extra whitespace.
     
     Args:
-        text (str): The original text.
+        text (str): The full text.
     
     Returns:
         str: The cleaned text.
@@ -26,7 +27,7 @@ def truncate_text(text: str, max_words: int) -> str:
     Truncate the text to the first max_words words.
     
     Args:
-        text (str): The text to be truncated.
+        text (str): The full text.
         max_words (int): Maximum number of words to retain.
         
     Returns:
@@ -45,7 +46,7 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
         max_words (int): Maximum number of words to retain.
         
     Returns:
-        str: The truncated summary text that ideally ends with '.', '?' or '!'.
+        str: The truncated summary text.
     """
     valid_endings = {'.', '?', '!'}
     words = text.split()
@@ -54,20 +55,16 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
         return text if text[-1] in valid_endings else text + '.'
     
     truncated = " ".join(words[:max_words])
-    # If the truncated text ends with a valid punctuation, return it.
     if truncated and truncated[-1] in valid_endings:
         return truncated
-    # Otherwise, try to locate the last valid sentence-ending punctuation in the truncated text.
     last_pos = -1
     for punct in valid_endings:
         pos = truncated.rfind(punct)
         if pos > last_pos:
             last_pos = pos
     if last_pos != -1:
-        # Return the text up to and including the punctuation.
         return truncated[:last_pos+1].strip()
     else:
-        # Fallback: if no punctuation found, return truncated text with a period appended.
         return truncated + '.'
 
 def save_cnn_dailymail_data(output_file: str):
@@ -75,8 +72,7 @@ def save_cnn_dailymail_data(output_file: str):
     Load the CNN/DailyMail dataset (version 3.0.0), clean and truncate the articles
     and summaries, and save the resulting list of dictionaries to a JSON file.
     
-    The article is truncated to the first 50 words and the summary is truncated
-    to the first 20 words (ensuring complete sentences when possible).
+    The article is truncated to the first 50 words and the summary to the first 20 words.
     
     Args:
         output_file (str): The file path to save the JSON training data.
@@ -107,6 +103,9 @@ def save_cnn_dailymail_data(output_file: str):
             "summary": truncated_summary
         })
     
+    # Ensure that the output directory exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
     
@@ -114,5 +113,4 @@ def save_cnn_dailymail_data(output_file: str):
 
 if __name__ == "__main__":
     output_file = "app/models/data/text/training_data.json"
-
     save_cnn_dailymail_data(output_file)
