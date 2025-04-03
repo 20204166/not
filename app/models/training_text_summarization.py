@@ -2,6 +2,12 @@ import os
 import tensorflow as tf
 print("TensorFlow version:", tf.__version__)
 print("GPU devices:", tf.config.list_physical_devices('GPU'))
+# Test a simple matrix multiplication
+with tf.device('/GPU:0'):
+    a = tf.random.normal([1000, 1000])
+    b = tf.random.normal([1000, 1000])
+    c = tf.matmul(a, b)
+print("Operation result shape:", c.shape)
 # Enable GPU memory growth so TensorFlow allocates memory on demand.
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
@@ -20,7 +26,7 @@ import matplotlib.pyplot as plt  # Ensure matplotlib is installed
 import re  # For cleaning text if needed
 
 # Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations.
-tf.config.optimizer.set_jit(True)
+tf.config.optimizer.set_jit(False)
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Embedding, Dense, Concatenate, Attention, LSTMCell
