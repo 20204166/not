@@ -1,23 +1,20 @@
-# TensorFlow and related packages (using TF 2.17.1 for Colab GPU compatibility)
+# TensorFlow and related packages (GPU-enabled)
 tensorflow==2.17.1
 tensorflow-text==2.17.0
 protobuf==4.25.6
+fsspec==2024.10.0
 
-# For gcsfs compatibility
-fsspec==2025.3.0
-
-# Data manipulation (Colab expects these versions)
+# Data manipulation
 pandas==2.2.2
 numpy==1.26.4
 
-# PyTorch and related packages (to satisfy packages like accelerate and torchvision)
-torch==2.6.0
-# Uncomment these if needed:
-# torchaudio
-# torchvision
+# PyTorch and related packages
+torch==2.5.1
+torchaudio==2.5.1+cu121
+torchvision==0.20.1+cu121
 
 # Transformers and tokenizers
-transformers==4.26.1
+transformers==4.41.0
 tokenizers==0.13.3
 
 # Machine learning utilities
@@ -28,4 +25,4 @@ flask==2.2.2
 speechrecognition==3.14.2
 
 # Datasets library
-datasets==2.14.4
+datasets==3.5.0
