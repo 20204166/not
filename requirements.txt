@@ -1,4 +1,4 @@
-# Deep Learning Frameworks
+# Deep Learning Frameworks (using TensorFlow 2.17.1 for GPU support on Colab/Kaggle)
 tensorflow==2.17.1
 tensorflow-text==2.17.0
 
@@ -6,11 +6,11 @@ tensorflow-text==2.17.0
 protobuf==4.25.6
 fsspec==2025.3.0
 
-# Data manipulation
+# Data manipulation libraries
 pandas==2.2.2
 numpy==1.26.4
 
-# PyTorch and related
+# PyTorch and related (if needed)
 torch==2.6.0
 
 # NLP libraries
@@ -20,7 +20,7 @@ tokenizers==0.13.3
 # Machine Learning utilities
 scikit-learn==1.6.1
 
-# Web framework and Speech recognition
+# Web framework and Speech Recognition
 flask==2.2.2
 speechrecognition==3.14.2
 
