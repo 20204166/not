@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 print("TensorFlow version:", tf.__version__)
 print("GPU devices:", tf.config.list_physical_devices('GPU'))
+!nvidia-smi
 # Test a simple matrix multiplication
 with tf.device('/GPU:0'):
     a = tf.random.normal([1000, 1000])
