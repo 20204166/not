@@ -1,33 +1,14 @@
-# TensorFlow and related packages
+# requirements.txt - Updated on 2025-04-03
 tensorflow==2.17.1
 tensorflow-text==2.17.0
 protobuf==4.25.6
 fsspec==2025.3.0
-
-# Data manipulation
 pandas==2.2.2
 numpy==1.26.4
-
-# PyTorch and related packages
 torch==2.6.0
-# Uncomment the following if your project requires them:
-# torchvision==0.20.1
-
-# Transformers and tokenizers
 transformers==4.26.1
 tokenizers==0.13.3
-
-# Machine learning utilities
 scikit-learn==1.6.1
-
-# Web framework and others
 flask==2.2.2
 speechrecognition==3.14.2
-
-# Datasets library
 datasets==2.14.4
-
-# (Optional) Additional dependencies if you need functionality from packages like bigframes or timm:
-# gcsfs>=2023.3.0
-# google-cloud-bigtable>=2.24.0
-# google-cloud-pubsub>=2.21.4
