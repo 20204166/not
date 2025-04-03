@@ -19,7 +19,6 @@ if gpus:
         print("Error setting GPU memory growth:", e)
 else:
     print("No GPU found. TensorFlow will default to CPU if no GPU is present.")
-
 import json
 import numpy as np
 import matplotlib.pyplot as plt  # Ensure matplotlib is installed
