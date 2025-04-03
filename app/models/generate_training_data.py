@@ -113,5 +113,6 @@ def save_cnn_dailymail_data(output_file: str):
     print(f"\nTraining data saved to: {output_file}")
 
 if __name__ == "__main__":
-    output_file = "app/models/data/text/training_data.json"
+    output_file = "/content/not/app/models/data/text/training_data.json"
+
     save_cnn_dailymail_data(output_file)
