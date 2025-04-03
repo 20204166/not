@@ -198,7 +198,7 @@ def train_model(data_path: str, epochs: int = 10,
                 max_length_input: int = 50, max_length_target: int = 20,
                 embedding_dim: int = 50, force_rebuild: bool = True,
                 batch_size: int = 64):
-    model_path = "app/models/saved_model/summarization_model.h5"
+    model_path = "app/models/saved_model/summarization_model.keras"
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
     tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
 
