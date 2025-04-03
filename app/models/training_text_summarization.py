@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt  # Ensure matplotlib is installed
 import re  # For cleaning text if needed
 
 # Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations.
-tf.config.optimizer.set_jit(True)
+tf.config.optimizer.set_jit(False)
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Embedding, Dense, Concatenate, Attention, LSTMCell
