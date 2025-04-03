@@ -11,4 +11,4 @@ tokenizers==0.13.3
 scikit-learn==1.6.1
 flask==2.2.2
 speechrecognition==3.14.2
-datasets==2.14.4
+datasets
