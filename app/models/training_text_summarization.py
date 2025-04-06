@@ -207,7 +207,7 @@ def train_model(data_path: str, epochs: int = 10,
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
     tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
 
-    # CHANGED: Create necessary directories if they do not exist (for Kaggle environment)
+    # Create necessary directories if they do not exist (for Kaggle environment)
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
     input_texts, target_texts = load_training_data(data_path)
@@ -271,10 +271,9 @@ if __name__ == "__main__":
     model, tokenizer_input, tokenizer_target, history = train_model(
         training_data_path,
         epochs=30,
-        force_rebuild=True,
+        force_rebuild=False,  # Changed to False to resume training if saved model exists
         batch_size=64
     )
-    # CHANGED: Update the final print statement to use the same model_path
     print("Model training complete. Model saved to", "app/models/saved_model/summarization_model.keras")
     print("Tokenizers saved to app/models/saved_model/tokenizer_input.json and app/models/saved_model/tokenizer_target.json")
     print("Training history and plots saved.")
