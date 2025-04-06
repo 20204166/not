@@ -5,12 +5,14 @@ import tensorflow as tf
 print("TensorFlow version:", tf.__version__)
 print("GPU devices:", tf.config.list_physical_devices('GPU'))
 os.system("nvidia-smi")
+
 # Test a simple matrix multiplication
 with tf.device('/GPU:0'):
     a = tf.random.normal([1000, 1000])
     b = tf.random.normal([1000, 1000])
     c = tf.matmul(a, b)
 print("Operation result shape:", c.shape)
+
 # Enable GPU memory growth so TensorFlow allocates memory on demand.
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
@@ -22,6 +24,7 @@ if gpus:
         print("Error setting GPU memory growth:", e)
 else:
     print("No GPU found. TensorFlow will default to CPU if no GPU is present.")
+
 import json
 import numpy as np
 import matplotlib.pyplot as plt  # Ensure matplotlib is installed
@@ -204,6 +207,9 @@ def train_model(data_path: str, epochs: int = 10,
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
     tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
 
+    # CHANGED: Create necessary directories if they do not exist (for Kaggle environment)
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+
     input_texts, target_texts = load_training_data(data_path)
 
     split_index = int(len(input_texts) * 0.9)
@@ -268,6 +274,7 @@ if __name__ == "__main__":
         force_rebuild=True,
         batch_size=64
     )
-    print("Model training complete. Model saved to app/models/saved_model/summarization_model.h5")
+    # CHANGED: Update the final print statement to use the same model_path
+    print("Model training complete. Model saved to", "app/models/saved_model/summarization_model.keras")
     print("Tokenizers saved to app/models/saved_model/tokenizer_input.json and app/models/saved_model/tokenizer_target.json")
     print("Training history and plots saved.")
