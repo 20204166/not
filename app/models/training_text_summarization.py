@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt  # Ensure matplotlib is installed
 import re  # For cleaning text if needed
 
 # Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations.
-tf.config.optimizer.set_jit(False)
+tf.config.optimizer.set_jit(True)
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Embedding, Dense, Concatenate, Attention, LSTMCell
@@ -201,7 +201,7 @@ class CustomEvaluationCallback(Callback):
 
 def train_model(data_path: str, epochs: int = 10,
                 max_length_input: int = 50, max_length_target: int = 20,
-                embedding_dim: int = 50, force_rebuild: bool = True,
+                embedding_dim: int = 50, force_rebuild: bool = False,
                 batch_size: int = 64):
     model_path = "app/models/saved_model/summarization_model.keras"
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
