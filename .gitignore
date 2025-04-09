@@ -21,3 +21,8 @@ Thumbs.db
 
 
 tf_directml_env_py39/
+# Ignore the saved model and tokenizers
+app/models/saved_model/
+
+# Ignore the training JSON file
+app/models/data/text/training_data.json
