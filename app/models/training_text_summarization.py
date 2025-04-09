@@ -6,7 +6,7 @@ print("TensorFlow version:", tf.__version__)
 print("GPU devices:", tf.config.list_physical_devices('GPU'))
 os.system("nvidia-smi")
 
-# Test a simple matrix multiplication
+# Test a simple matrix multiplication to verify GPU availability.
 with tf.device('/GPU:0'):
     a = tf.random.normal([1000, 1000])
     b = tf.random.normal([1000, 1000])
@@ -27,8 +27,8 @@ else:
 
 import json
 import numpy as np
-import matplotlib.pyplot as plt  # Ensure matplotlib is installed
-import re  # For cleaning text if needed
+import matplotlib.pyplot as plt
+import re
 
 # Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations.
 tf.config.optimizer.set_jit(True)
@@ -59,7 +59,7 @@ def load_training_data(data_path: str):
         target_texts = [item["summary"] for item in data]
     else:
         raise ValueError("Training data must contain keys 'article'/'highlights' or 'text'/'summary'.")
-    # Wrap target texts with start/end tokens.
+    # Wrap target texts with start and end tokens.
     target_texts = [f"<start> {summary} <end>" for summary in target_texts]
     return input_texts, target_texts
 
@@ -207,7 +207,7 @@ def train_model(data_path: str, epochs: int = 10,
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
     tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
 
-    # Create necessary directories if they do not exist (for Kaggle environment)
+    # Create necessary directories if they do not exist.
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
 
     input_texts, target_texts = load_training_data(data_path)
@@ -257,6 +257,7 @@ def train_model(data_path: str, epochs: int = 10,
         validation_data=val_dataset
     )
 
+    # Save tokenizers.
     with open(tokenizer_input_path, "w", encoding="utf-8") as f:
         f.write(tokenizer_input.to_json())
     with open(tokenizer_target_path, "w", encoding="utf-8") as f:
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     model, tokenizer_input, tokenizer_target, history = train_model(
         training_data_path,
         epochs=30,
-        force_rebuild=False,  # Changed to False to resume training if saved model exists
+        force_rebuild=False,
         batch_size=64
     )
     print("Model training complete. Model saved to", "app/models/saved_model/summarization_model.keras")
