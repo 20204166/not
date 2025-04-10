@@ -1,4 +1,4 @@
-import os
+import os 
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 import tensorflow as tf
@@ -148,8 +148,16 @@ def build_seq2seq_model(vocab_size_input: int, vocab_size_target: int,
     decoder_outputs = decoder_dense(decoder_combined_context)
 
     model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
-    custom_learning_rate = 0.001
-    optimizer = Adam(learning_rate=custom_learning_rate)
+    
+    # Optimized learning rate using an ExponentialDecay schedule.
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=0.001,
+        decay_steps=10000,
+        decay_rate=0.96,
+        staircase=True
+    )
+    optimizer = Adam(learning_rate=lr_schedule)
+    
     model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
@@ -271,7 +279,7 @@ if __name__ == "__main__":
     training_data_path = "app/models/data/text/training_data.json"  # Your training data file.
     model, tokenizer_input, tokenizer_target, history = train_model(
         training_data_path,
-        epochs=10,
+        epochs=20,
         force_rebuild=False,
         batch_size=64
     )
