@@ -1,0 +1,20 @@
+# docker-compose.yml
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: ai-notes-backend
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: production
+      # Add any additional environment variables here.
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:6-alpine
+    container_name: ai-notes-redis
+    ports:
+      - "6379:6379"
