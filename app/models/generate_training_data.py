@@ -96,5 +96,5 @@ def save_combined_data(output_file: str):
 
 if __name__ == "__main__":
     # Specify the output file for the combined data.
-    output_file = "app/models/data/text/training_data_combined.json"
+    output_file = "app/models/data/text/training_data.json"
     save_combined_data(output_file)
