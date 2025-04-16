@@ -1,4 +1,4 @@
-# File: generate_cnn_dailymail_training_data.py
+# File: generate_training_data.py
 
 from datasets import load_dataset
 import json
@@ -28,7 +28,7 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
     valid_endings = {'.', '?', '!'}
     words = text.split()
     if len(words) <= max_words:
-        return text if text[-1] in valid_endings else text + '.'
+        return text if text and text[-1] in valid_endings else text + '.'
     truncated = " ".join(words[:max_words])
     if truncated and truncated[-1] in valid_endings:
         return truncated
@@ -42,46 +42,58 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
     else:
         return truncated + '.'
 
-def save_cnn_dailymail_data(output_file: str):
+def process_cnn_dailymail() -> list:
     """
-    Load the CNN/DailyMail dataset (version 3.0.0), clean and truncate the articles and summaries,
-    and save the resulting list of dictionaries to a JSON file.
+    Load and process the CNN/DailyMail dataset (v3.0.0) for training data.
     """
-    # Load the dataset.
     dataset = load_dataset("cnn_dailymail", "3.0.0", split="train")
-    
-    # Process a sample for display.
-    sample = dataset[0]
-    sample_article = clean_text(sample["article"])
-    sample_summary = clean_text(sample["highlights"])
-    truncated_article = truncate_text(sample_article, 50)  # 50 words for input.
-    truncated_summary = truncate_summary_complete(sample_summary, 20)  # 20 words for summary.
-    
-    print("Sample Article (first 50 words):")
-    print(truncated_article + "...")
-    print("\nSample Summary (complete sentence if possible):")
-    print(truncated_summary)
-    
-    # Process all samples.
-    data = []
+    processed_data = []
     for sample in dataset:
-        cleaned_article = clean_text(sample["article"])
-        cleaned_summary = clean_text(sample["highlights"])
-        truncated_article = truncate_text(cleaned_article, 50)
-        truncated_summary = truncate_summary_complete(cleaned_summary, 20)
-        data.append({
+        article = clean_text(sample["article"])
+        summary = clean_text(sample["highlights"])
+        truncated_article = truncate_text(article, 50)      # 50 words for article
+        truncated_summary = truncate_summary_complete(summary, 20)  # 20 words for summary
+        processed_data.append({
             "text": truncated_article,
             "summary": truncated_summary
         })
+    return processed_data
+
+def process_reddit_tifu() -> list:
+    """
+    Load and process the Reddit TIFU dataset (short version) for training data.
     
+    This dataset uses the keys 'document' for the input text and 'tldr' for the summary.
+    """
+    dataset = load_dataset("reddit_tifu", "short", split="train")
+    processed_data = []
+    for sample in dataset:
+        document = clean_text(sample.get("document", ""))
+        summary = clean_text(sample.get("tldr", ""))
+        truncated_document = truncate_text(document, 50)
+        truncated_summary = truncate_summary_complete(summary, 20)
+        processed_data.append({
+            "text": truncated_document,
+            "summary": truncated_summary
+        })
+    return processed_data
+
+def save_combined_data(output_file: str):
+    """
+    Load and process both the CNN/DailyMail and Reddit TIFU datasets,
+    combine them into one list, and save the resulting data to a JSON file.
+    """
+    cnn_data = process_cnn_dailymail()
+    reddit_data = process_reddit_tifu()
+    combined_data = cnn_data + reddit_data
+
     # Create the directory if it doesn't exist.
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    
-    print(f"\nTraining data saved to: {output_file}")
+        json.dump(combined_data, f, ensure_ascii=False, indent=4)
+    print(f"\nCombined training data saved to: {output_file}")
 
 if __name__ == "__main__":
-    output_file = "app/models/data/text/training_data.json"
-    save_cnn_dailymail_data(output_file)
+    # Specify the output file for the combined data.
+    output_file = "app/models/data/text/training_data_combined.json"
+    save_combined_data(output_file)
