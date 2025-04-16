@@ -1,36 +1,31 @@
-import os 
+import os
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 import tensorflow as tf
+# List and configure GPUs before any TensorFlow operations
 print("TensorFlow version:", tf.__version__)
-print("GPU devices:", tf.config.list_physical_devices('GPU'))
-os.system("nvidia-smi")
-
-# Test a simple matrix multiplication to verify GPU availability.
-with tf.device('/GPU:0'):
-    a = tf.random.normal([1000, 1000])
-    b = tf.random.normal([1000, 1000])
-    c = tf.matmul(a, b)
-print("Operation result shape:", c.shape)
-
-# Enable GPU memory growth so TensorFlow allocates memory on demand.
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
     try:
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
-        print("GPU devices found:", gpus)
+        print("Enabled memory growth on GPUs:", gpus)
     except RuntimeError as e:
         print("Error setting GPU memory growth:", e)
 else:
     print("No GPU found. TensorFlow will default to CPU if no GPU is present.")
 
-import json
-import numpy as np
-import matplotlib.pyplot as plt
-import re
+# Test a simple matrix multiplication to verify GPU availability
+with tf.device('/GPU:0' if gpus else '/CPU:0'):
+    a = tf.random.normal([1000, 1000])
+    b = tf.random.normal([1000, 1000])
+    c = tf.matmul(a, b)
+print("Operation result shape:", c.shape)
 
-# Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations.
+# Optionally show NVIDIA-SMI
+os.system("nvidia-smi")
+
+# Enable XLA (Accelerated Linear Algebra) to optimize and fuse operations
 tf.config.optimizer.set_jit(True)
 
 from tensorflow.keras.models import Model, load_model
@@ -39,250 +34,156 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
 from tensorflow.keras.optimizers import Adam
+import json
+import numpy as np
+import matplotlib.pyplot as plt
 
-print("Running with GPU support if available.")
-
-# Global settings for maximum sequence lengths.
+# Global settings for maximum sequence lengths
 max_length_input = 50
 max_length_target = 20
 
 def load_training_data(data_path: str):
     with open(data_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    if len(data) == 0 or not isinstance(data[0], dict):
+    if not data or not isinstance(data[0], dict):
         raise ValueError("Training data must be a non-empty list of objects.")
     if "article" in data[0] and "highlights" in data[0]:
-        input_texts = [item["article"] for item in data]
-        target_texts = [item["highlights"] for item in data]
+        inputs = [item["article"] for item in data]
+        targets = [item["highlights"] for item in data]
     elif "text" in data[0] and "summary" in data[0]:
-        input_texts = [item["text"] for item in data]
-        target_texts = [item["summary"] for item in data]
+        inputs = [item["text"] for item in data]
+        targets = [item["summary"] for item in data]
     else:
-        raise ValueError("Training data must contain keys 'article'/'highlights' or 'text'/'summary'.")
-    # Wrap target texts with start and end tokens.
-    target_texts = [f"<start> {summary} <end>" for summary in target_texts]
-    return input_texts, target_texts
+        raise ValueError("Training data must contain 'article'/'highlights' or 'text'/'summary'.")
+    # Wrap target texts
+    targets = [f"<start> {t} <end>" for t in targets]
+    return inputs, targets
 
-def create_tokenizer(texts: list, oov_token="<OOV>"):
-    tokenizer = Tokenizer(oov_token=oov_token)
-    tokenizer.fit_on_texts(texts)
-    return tokenizer
+def create_tokenizer(texts, oov_token="<OOV>"):
+    tok = Tokenizer(oov_token=oov_token)
+    tok.fit_on_texts(texts)
+    return tok
 
-def load_tokenizer(tokenizer_path: str) -> Tokenizer:
-    with open(tokenizer_path, "r", encoding="utf-8") as f:
-        tokenizer_json = f.read()
-    return tf.keras.preprocessing.text.tokenizer_from_json(tokenizer_json)
+def load_tokenizer(path: str):
+    with open(path, 'r', encoding='utf-8') as f:
+        return tf.keras.preprocessing.text.tokenizer_from_json(f.read())
 
-def create_dataset(input_texts, target_texts, batch_size, tokenizer_input, tokenizer_target):
-    """
-    Creates a tf.data.Dataset that yields ((encoder_input, decoder_input), decoder_target)
-    for each sample.
-    """
+def create_dataset(input_texts, target_texts, batch_size, tok_in, tok_tgt):
     dataset = tf.data.Dataset.from_tensor_slices((input_texts, target_texts))
-    
-    def process_sample(input_text, target_text):
-        """
-        Tokenize and pad a single sample, and create the decoder target by shifting.
-        """
-        def _process_sample(input_text_str, target_text_str):
-            # Convert EagerTensors to numpy then decode.
-            input_str = input_text_str.numpy().decode('utf-8')
-            target_str = target_text_str.numpy().decode('utf-8')
-            # Convert to sequences using the loaded tokenizers.
-            encoder_seq = tokenizer_input.texts_to_sequences([input_str])[0]
-            decoder_seq = tokenizer_target.texts_to_sequences([target_str])[0]
-            # Pad sequences.
-            encoder_seq = pad_sequences([encoder_seq], maxlen=max_length_input, padding='post')[0]
-            decoder_input_seq = pad_sequences([decoder_seq], maxlen=max_length_target, padding='post')[0]
-            # Create decoder target sequence: shift left by one.
-            decoder_target_seq = np.zeros_like(decoder_input_seq)
-            decoder_target_seq[:-1] = decoder_input_seq[1:]
-            decoder_target_seq[-1] = 0
-            return encoder_seq.astype(np.int32), decoder_input_seq.astype(np.int32), decoder_target_seq.astype(np.int32)
-        
-        encoder_seq, decoder_input_seq, decoder_target_seq = tf.py_function(
-            _process_sample, [input_text, target_text],
-            [tf.int32, tf.int32, tf.int32]
-        )
-        # Set static shapes.
-        encoder_seq.set_shape([max_length_input])
-        decoder_input_seq.set_shape([max_length_target])
-        decoder_target_seq.set_shape([max_length_target])
-        return (encoder_seq, decoder_input_seq), decoder_target_seq
-
-    dataset = dataset.map(process_sample, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.shuffle(buffer_size=1000)
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    def _process(input_str, target_str):
+        inp = input_str.numpy().decode()
+        tgt = target_str.numpy().decode()
+        enc_seq = tok_in.texts_to_sequences([inp])[0]
+        dec_seq = tok_tgt.texts_to_sequences([tgt])[0]
+        enc_seq = pad_sequences([enc_seq], maxlen=max_length_input, padding='post')[0]
+        dec_in_seq = pad_sequences([dec_seq], maxlen=max_length_target, padding='post')[0]
+        dec_tgt_seq = np.zeros_like(dec_in_seq)
+        dec_tgt_seq[:-1] = dec_in_seq[1:]
+        return (enc_seq.astype(np.int32), dec_in_seq.astype(np.int32)), dec_tgt_seq.astype(np.int32)
+    def proc_tf(inp, tgt):
+        return tf.py_function(_process, [inp, tgt], [tf.int32, tf.int32, tf.int32])
+    dataset = dataset.map(proc_tf, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.shuffle(1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
 
-def build_seq2seq_model(vocab_size_input: int, vocab_size_target: int,
-                        embedding_dim: int, max_length_input: int, max_length_target: int) -> tf.keras.Model:
-    # Encoder
-    encoder_inputs = Input(shape=(max_length_input,), name="encoder_inputs")
-    enc_emb = Embedding(vocab_size_input, embedding_dim, name="encoder_embedding")(encoder_inputs)
-    encoder_lstm_cell1 = LSTMCell(64, name="encoder_lstm_cell1")
-    encoder_rnn1 = tf.keras.layers.RNN(encoder_lstm_cell1, return_sequences=True, return_state=True, name="encoder_rnn1")
-    encoder_outputs1, state_h1, state_c1 = encoder_rnn1(enc_emb)
-    encoder_lstm_cell2 = LSTMCell(64, name="encoder_lstm_cell2")
-    encoder_rnn2 = tf.keras.layers.RNN(encoder_lstm_cell2, return_sequences=True, return_state=True, name="encoder_rnn2")
-    encoder_outputs2, state_h2, state_c2 = encoder_rnn2(encoder_outputs1)
-    encoder_outputs = encoder_outputs2  # For attention.
-    encoder_states = [state_h2, state_c2]
+def build_seq2seq_model(vocab_in, vocab_tgt, emb_dim, max_in, max_tgt):
+    enc_inputs = Input(shape=(max_in,), name="enc_inputs")
+    enc_emb = Embedding(vocab_in, emb_dim, name="enc_emb")(enc_inputs)
+    cell1 = LSTMCell(64, name="enc_cell1")
+    rnn1 = tf.keras.layers.RNN(cell1, return_sequences=True, return_state=True, name="enc_rnn1")
+    out1, h1, c1 = rnn1(enc_emb)
+    cell2 = LSTMCell(64, name="enc_cell2")
+    rnn2 = tf.keras.layers.RNN(cell2, return_sequences=True, return_state=True, name="enc_rnn2")
+    enc_outs, h2, c2 = rnn2(out1)
+    enc_states = [h2, c2]
 
-    # Decoder
-    decoder_inputs = Input(shape=(max_length_target,), name="decoder_inputs")
-    dec_emb = Embedding(vocab_size_target, embedding_dim, name="decoder_embedding")(decoder_inputs)
-    decoder_lstm_cell1 = LSTMCell(64, name="decoder_lstm_cell1")
-    decoder_rnn1 = tf.keras.layers.RNN(decoder_lstm_cell1, return_sequences=True, return_state=True, name="decoder_rnn1")
-    decoder_outputs1, _, _ = decoder_rnn1(dec_emb, initial_state=encoder_states)
-    decoder_lstm_cell2 = LSTMCell(64, name="decoder_lstm_cell2")
-    decoder_rnn2 = tf.keras.layers.RNN(decoder_lstm_cell2, return_sequences=True, return_state=True, name="decoder_rnn2")
-    decoder_outputs2, _, _ = decoder_rnn2(decoder_outputs1)
+    dec_inputs = Input(shape=(max_tgt,), name="dec_inputs")
+    dec_emb = Embedding(vocab_tgt, emb_dim, name="dec_emb")(dec_inputs)
+    dec_cell1 = LSTMCell(64, name="dec_cell1")
+    dec_rnn1 = tf.keras.layers.RNN(dec_cell1, return_sequences=True, return_state=True, name="dec_rnn1")
+    dec_out1, _, _ = dec_rnn1(dec_emb, initial_state=enc_states)
+    dec_cell2 = LSTMCell(64, name="dec_cell2")
+    dec_rnn2 = tf.keras.layers.RNN(dec_cell2, return_sequences=True, return_state=True, name="dec_rnn2")
+    dec_out2, _, _ = dec_rnn2(dec_out1)
 
-    # Attention and Dense
-    attention_layer = Attention(name="attention_layer")
-    context_vector = attention_layer([decoder_outputs2, encoder_outputs])
-    decoder_combined_context = Concatenate(axis=-1, name="concat_layer")([context_vector, decoder_outputs2])
-    decoder_dense = Dense(vocab_size_target, activation='softmax', name="decoder_dense")
-    decoder_outputs = decoder_dense(decoder_combined_context)
+    attn = Attention(name="attn")([dec_out2, enc_outs])
+    concat = Concatenate(name="concat")([attn, dec_out2])
+    out = Dense(vocab_tgt, activation='softmax', name="dense")(concat)
 
-    model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
-    
-    # Optimized learning rate using an ExponentialDecay schedule.
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.0005,
-        decay_steps=20000,
-        decay_rate=0.98,
-        staircase=True
-    )
-    optimizer = Adam(learning_rate=lr_schedule)
-    
-    model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model = Model([enc_inputs, dec_inputs], out)
+    lr_sched = tf.keras.optimizers.schedules.ExponentialDecay(0.0005, decay_steps=20000, decay_rate=0.98, staircase=True)
+    model.compile(Adam(lr_sched), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
-def plot_training_history(history, save_dir: str):
-    epochs = range(1, len(history.history['loss']) + 1)
-    plt.figure(figsize=(12, 5))
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs, history.history['loss'], 'bo-', label='Training Loss')
-    plt.title('Training Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
+def plot_history(hist, save_dir):
+    epochs = range(1, len(hist.history['loss'])+1)
+    plt.figure(figsize=(12,5))
+    plt.plot(epochs, hist.history['loss'], 'bo-', label='Loss')
+    plt.plot(epochs, hist.history['accuracy'], 'go-', label='Accuracy')
+    plt.title('Training Metrics')
+    plt.xlabel('Epoch')
     plt.legend()
-    plt.subplot(1, 2, 2)
-    plt.plot(epochs, history.history['accuracy'], 'go-', label='Training Accuracy')
-    plt.title('Training Accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.tight_layout()
-    plot_path = os.path.join(save_dir, "training_progress.png")
-    plt.savefig(plot_path)
-    plt.show()
-    print(f"Training history plot saved to: {plot_path}")
+    out_path = os.path.join(save_dir, "training_progress.png")
+    plt.savefig(out_path)
+    print(f"Saved plot to {out_path}")
 
-class CustomEvaluationCallback(Callback):
-    def __init__(self, val_dataset, tokenizer_target):
+class CustomEval(Callback):
+    def __init__(self, val_ds):
         super().__init__()
-        self.val_dataset = val_dataset
-        self.tokenizer_target = tokenizer_target
-
+        self.val_ds = val_ds
     def on_epoch_end(self, epoch, logs=None):
-        all_predictions = []
-        all_true = []
-        for (encoder_inputs, decoder_inputs), decoder_targets in self.val_dataset:
-            predictions = self.model.predict([encoder_inputs, decoder_inputs])
-            predicted_indices = np.argmax(predictions, axis=-1)
-            all_predictions.extend(predicted_indices.tolist())
-            all_true.extend(decoder_targets.numpy().tolist())
-        total_tokens = 0
-        correct_tokens = 0
-        for pred_seq, true_seq in zip(all_predictions, all_true):
-            for p, t in zip(pred_seq, true_seq):
-                if t != 0:
-                    total_tokens += 1
-                    if p == t:
-                        correct_tokens += 1
-        val_accuracy = correct_tokens / total_tokens if total_tokens > 0 else 0
-        print(f"Custom Evaluation - Validation Token Accuracy: {val_accuracy:.4f}")
+        total, correct = 0, 0
+        for (enc_in, dec_in), dec_tgt in self.val_ds:
+            preds = self.model.predict([enc_in, dec_in])
+            idx = np.argmax(preds, -1)
+            mask = dec_tgt != 0
+            correct += np.sum((idx == dec_tgt) & mask)
+            total += np.sum(mask)
+        print(f"Validation Token Accuracy: {correct/total:.4f}")
 
-def train_model(data_path: str, epochs: int = 10,
-                max_length_input: int = 50, max_length_target: int = 20,
-                embedding_dim: int = 50, force_rebuild: bool = False,
-                batch_size: int = 64):
-    model_path = "app/models/saved_model/summarization_model.keras"
-    tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
-    tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
+def train_model(path, epochs=10, batch_size=64, emb_dim=50):
+    data_in, data_tgt = load_training_data(path)
+    split = int(0.9 * len(data_in))
+    train_in, train_tgt = data_in[:split], data_tgt[:split]
+    val_in, val_tgt = data_in[split:], data_tgt[split:]
 
-    # Create necessary directories if they do not exist.
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-
-    input_texts, target_texts = load_training_data(data_path)
-
-    split_index = int(len(input_texts) * 0.9)
-    train_inputs = input_texts[:split_index]
-    train_targets = target_texts[:split_index]
-    val_inputs = input_texts[split_index:]
-    val_targets = target_texts[split_index:]
-
-    if os.path.exists(tokenizer_input_path) and os.path.exists(tokenizer_target_path) and not force_rebuild:
-        print("Loading tokenizers from saved files...")
-        tokenizer_input = load_tokenizer(tokenizer_input_path)
-        tokenizer_target = load_tokenizer(tokenizer_target_path)
+    tok_in_path = "app/models/saved_model/tokenizer_input.json"
+    tok_tgt_path = "app/models/saved_model/tokenizer_target.json"
+    if os.path.exists(tok_in_path) and os.path.exists(tok_tgt_path):
+        tok_in = load_tokenizer(tok_in_path)
+        tok_tgt = load_tokenizer(tok_tgt_path)
     else:
-        print("Creating new tokenizers...")
-        tokenizer_input = create_tokenizer(input_texts)
-        tokenizer_target = create_tokenizer(target_texts)
+        tok_in = create_tokenizer(data_in)
+        tok_tgt = create_tokenizer(data_tgt)
 
-    vocab_size_input = len(tokenizer_input.word_index) + 1
-    vocab_size_target = len(tokenizer_target.word_index) + 1
+    vs_in = len(tok_in.word_index) + 1
+    vs_tgt = len(tok_tgt.word_index) + 1
 
-    train_dataset = create_dataset(train_inputs, train_targets, batch_size, tokenizer_input, tokenizer_target)
-    val_dataset = create_dataset(val_inputs, val_targets, batch_size, tokenizer_input, tokenizer_target)
+    train_ds = create_dataset(train_in, train_tgt, batch_size, tok_in, tok_tgt)
+    val_ds = create_dataset(val_in, val_tgt, batch_size, tok_in, tok_tgt)
 
-    if os.path.exists(model_path) and not force_rebuild:
-        print("Loading previously saved model...")
+    model_path = "app/models/saved_model/summarization_model.keras"
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+    if os.path.exists(model_path):
+        print("Loading model from disk")
         model = load_model(model_path)
     else:
-        print("Building a new model...")
-        model = build_seq2seq_model(vocab_size_input, vocab_size_target, embedding_dim, max_length_input, max_length_target)
+        model = build_seq2seq_model(vs_in, vs_tgt, emb_dim, max_length_input, max_length_target)
 
-    early_stop = EarlyStopping(monitor='loss', patience=3, restore_best_weights=True)
-    checkpoint = ModelCheckpoint(model_path, monitor='loss', save_best_only=True, verbose=1)
-    custom_eval = CustomEvaluationCallback(val_dataset, tokenizer_target)
+    cb = [EarlyStopping('loss', patience=3, restore_best_weights=True),
+          ModelCheckpoint(model_path, save_best_only=True, verbose=1),
+          CustomEval(val_ds)]
 
-    if gpus:
-        print("Training will run on GPU using the tf.data pipeline.")
-    else:
-        print("Training will run on CPU using the tf.data pipeline.")
+    hist = model.fit(train_ds, epochs=epochs, verbose=2, callbacks=cb, validation_data=val_ds)
 
-    history = model.fit(
-        train_dataset,
-        epochs=epochs,
-        verbose=2,
-        callbacks=[early_stop, checkpoint, custom_eval],
-        validation_data=val_dataset
-    )
+    with open(tok_in_path, 'w', encoding='utf-8') as f:
+        f.write(tok_in.to_json())
+    with open(tok_tgt_path, 'w', encoding='utf-8') as f:
+        f.write(tok_tgt.to_json())
 
-    # Save tokenizers.
-    with open(tokenizer_input_path, "w", encoding="utf-8") as f:
-        f.write(tokenizer_input.to_json())
-    with open(tokenizer_target_path, "w", encoding="utf-8") as f:
-        f.write(tokenizer_target.to_json())
-
-    plot_training_history(history, os.path.dirname(model_path))
-
-    return model, tokenizer_input, tokenizer_target, history
+    plot_history(hist, os.path.dirname(model_path))
+    return model
 
 if __name__ == "__main__":
-    training_data_path = "app/models/data/text/training_data.json"  # Your training data file.
-    model, tokenizer_input, tokenizer_target, history = train_model(
-        training_data_path,
-        epochs=10,
-        force_rebuild=False,
-        batch_size=64
-    )
-    print("Model training complete. Model saved to", "app/models/saved_model/summarization_model.keras")
-    print("Tokenizers saved to app/models/saved_model/tokenizer_input.json and app/models/saved_model/tokenizer_target.json")
-    print("Training history and plots saved.")
+    model = train_model("app/models/data/text/training_data.json")
+    print("Training complete.")
