@@ -22,7 +22,7 @@ def truncate_text(text: str, max_words: int) -> str:
 
 def truncate_summary_complete(text: str, max_words: int) -> str:
     """
-    Truncate the summary text to the first max_words words, ensuring that the output
+    Truncate the summary text to the first max_words words, ensuring that the output 
     ends with a sentence-ending punctuation if possible.
     """
     valid_endings = {'.', '?', '!'}
@@ -45,10 +45,14 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
 def process_cnn_dailymail() -> list:
     """
     Load and process the CNN/DailyMail dataset (v3.0.0) for training data.
+    
+    Uses the 'article' and 'highlights' keys from each sample. Outputs dictionaries
+    with consistent keys: "text" for the article and "summary" for the summary.
     """
     dataset = load_dataset("cnn_dailymail", "3.0.0", split="train")
     processed_data = []
     for sample in dataset:
+        # Use CNN/DailyMail keys
         article = clean_text(sample["article"])
         summary = clean_text(sample["highlights"])
         truncated_article = truncate_text(article, 50)      # 50 words for article
@@ -63,18 +67,21 @@ def process_reddit_tifu() -> list:
     """
     Load and process the Reddit TIFU dataset (short version) for training data.
     
-    This dataset uses the keys 'document' for the input text and 'tldr' for the summary.
+    This function checks if the sample already contains 'text' and 'summary';
+    if not, it falls back to using 'document' for the input and 'tldr' for the summary.
+    The output dictionaries always contain keys "text" and "summary".
     """
-    # Pass trust_remote_code=True to allow the custom code to run.
+    # Allow custom code execution for Reddit TIFU.
     dataset = load_dataset("reddit_tifu", "short", split="train", trust_remote_code=True)
     processed_data = []
     for sample in dataset:
-        document = clean_text(sample.get("document", ""))
-        summary = clean_text(sample.get("tldr", ""))
-        truncated_document = truncate_text(document, 50)
-        truncated_summary = truncate_summary_complete(summary, 20)
+        # Prefer "text" and "summary" if they exist; otherwise, fallback.
+        input_text = clean_text(sample.get("text", sample.get("document", "")))
+        output_summary = clean_text(sample.get("summary", sample.get("tldr", "")))
+        truncated_text = truncate_text(input_text, 50)
+        truncated_summary = truncate_summary_complete(output_summary, 20)
         processed_data.append({
-            "text": truncated_document,
+            "text": truncated_text,
             "summary": truncated_summary
         })
     return processed_data
@@ -84,8 +91,9 @@ def process_billsum() -> list:
     Load and process the BillSum dataset for training data.
     
     The BillSum dataset is assumed to contain legislative bills and summaries.
-    The bill text is accessed via the key 'bill_text' (falling back to 'bill' if not available)
-    and the summary under 'summary'.
+    The bill text is accessed via the key 'bill_text' (falling back to 'bill')
+    and the summary under the key 'summary'. Outputs dictionaries with keys 
+    "text" and "summary".
     """
     try:
         dataset = load_dataset("billsum", split="train")
@@ -105,25 +113,26 @@ def process_billsum() -> list:
         })
     return processed_data
 
-def process_news_summary() -> list:
+def process_newsroom() -> list:
     """
-    Load and process a News Summary dataset for training data.
+    Load and process the Newsroom dataset for training data.
     
-    This dataset is assumed to contain news articles (key: 'text') paired with
-    short human-written summaries (key: 'summary').
+    This function checks if the sample contains a 'text' key; if not, it uses the
+    'document' key for the news article. The summary is expected to be under 'summary'.
+    Outputs dictionaries with keys "text" and "summary".
     """
     try:
-        dataset = load_dataset("news_summary", split="train")
+        dataset = load_dataset("newsroom", split="train")
     except Exception as e:
-        raise ValueError("Could not load the News Summary dataset. "
+        raise ValueError("Could not load the Newsroom dataset. "
                          "Please ensure the dataset is available or adjust the dataset identifier.") from e
 
     processed_data = []
     for sample in dataset:
-        article = clean_text(sample.get("text", ""))
-        summary = clean_text(sample.get("summary", ""))
-        truncated_article = truncate_text(article, 50)
-        truncated_summary = truncate_summary_complete(summary, 20)
+        input_text = clean_text(sample.get("text", sample.get("document", "")))
+        output_summary = clean_text(sample.get("summary", ""))
+        truncated_article = truncate_text(input_text, 50)
+        truncated_summary = truncate_summary_complete(output_summary, 20)
         processed_data.append({
             "text": truncated_article,
             "summary": truncated_summary
@@ -132,14 +141,17 @@ def process_news_summary() -> list:
 
 def save_combined_data(output_file: str):
     """
-    Load and process the CNN/DailyMail, Reddit TIFU, BillSum, and News Summary datasets,
+    Load and process the CNN/DailyMail, Reddit TIFU, BillSum, and Newsroom datasets,
     combine them into one list, and save the resulting data to a JSON file.
+    
+    The final output JSON will contain a list of dictionaries, each with keys:
+    "text" and "summary".
     """
     cnn_data = process_cnn_dailymail()
     reddit_data = process_reddit_tifu()
     billsum_data = process_billsum()
-    news_summary_data = process_news_summary()
-    combined_data = cnn_data + reddit_data + billsum_data + news_summary_data
+    newsroom_data = process_newsroom()
+    combined_data = cnn_data + reddit_data + billsum_data + newsroom_data
 
     # Create the directory if it doesn't exist.
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
