@@ -279,7 +279,7 @@ if __name__ == "__main__":
     training_data_path = "app/models/data/text/training_data.json"  # Your training data file.
     model, tokenizer_input, tokenizer_target, history = train_model(
         training_data_path,
-        epochs=20,
+        epochs=10,
         force_rebuild=False,
         batch_size=64
     )
