@@ -4,140 +4,131 @@ from datasets import load_dataset
 import json
 import re
 import os
+import sys
+import urllib.request
+import tarfile
+
+# URL to the Cornell Newsroom release
+NEWSROOM_URL = "https://lil.nlp.cornell.edu/resources/newsroom/r8625bda324/newsroom-release.tar"
+# Where we'll unpack if NEWSROOM_DIR isn’t set
+AUTO_NEWSROOM_DIR = os.path.join(os.getcwd(), "manual_data", "newsroom")
 
 def clean_text(text: str) -> str:
-    """
-    Clean the input text by removing unwanted characters and extra whitespace.
-    """
-    text = re.sub(r"[^a-zA-Z0-9\s\.,;:!?'\-]", '', text)
-    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r"[^a-zA-Z0-9\s\.,;:!?'\-]", "", text)
+    text = re.sub(r"\s+", " ", text)
     return text.strip()
 
 def truncate_text(text: str, max_words: int) -> str:
-    """
-    Truncate the text to the first max_words words.
-    """
-    words = text.split()
-    return " ".join(words[:max_words])
+    return " ".join(text.split()[:max_words])
 
 def truncate_summary_complete(text: str, max_words: int) -> str:
-    """
-    Truncate the summary text to the first max_words words, ensuring that the output 
-    ends with a sentence-ending punctuation if possible.
-    """
-    valid_endings = {'.', '?', '!'}
+    valid_endings = {".", "?", "!"}
     words = text.split()
     if len(words) <= max_words:
-        return text if text and text[-1] in valid_endings else text + '.'
+        return text if text and text[-1] in valid_endings else text + "."
     truncated = " ".join(words[:max_words])
-    if truncated and truncated[-1] in valid_endings:
+    if truncated[-1] in valid_endings:
         return truncated
-    last_pos = -1
-    for punct in valid_endings:
-        pos = truncated.rfind(punct)
-        if pos > last_pos:
-            last_pos = pos
-    if last_pos != -1:
-        return truncated[:last_pos+1].strip()
-    else:
-        return truncated + '.'
+    # try to end at last punctuation
+    last = max(truncated.rfind(p) for p in valid_endings)
+    return truncated[: last + 1].strip() if last != -1 else truncated + "."
 
 def process_cnn_dailymail() -> list:
-    """
-    Load and process the CNN/DailyMail dataset (v3.0.0) for training data.
-    
-    Uses the 'article' and 'highlights' keys from each sample. Outputs dictionaries
-    with consistent keys: "text" for the article and "summary" for the summary.
-    """
-    dataset = load_dataset("cnn_dailymail", "3.0.0", split="train")
-    processed_data = []
-    for sample in dataset:
-        article = clean_text(sample["article"])
-        summary = clean_text(sample["highlights"])
-        processed_data.append({
-            "text":     truncate_text(article, 50),
-            "summary":  truncate_summary_complete(summary, 20)
+    ds = load_dataset("cnn_dailymail", "3.0.0", split="train")
+    out = []
+    for s in ds:
+        a = clean_text(s["article"])
+        h = clean_text(s["highlights"])
+        out.append({
+            "text":    truncate_text(a, 50),
+            "summary": truncate_summary_complete(h, 20)
         })
-    return processed_data
+    return out
 
 def process_reddit_tifu() -> list:
-    """
-    Load and process the Reddit TIFU dataset (short version) for training data.
-    
-    Checks for 'text'/'summary', otherwise falls back to 'document'/'tldr'.
-    """
-    dataset = load_dataset("reddit_tifu", "short", split="train", trust_remote_code=True)
-    processed_data = []
-    for sample in dataset:
-        input_text = clean_text(sample.get("text", sample.get("document", "")))
-        output_summary = clean_text(sample.get("summary", sample.get("tldr", "")))
-        processed_data.append({
-            "text":    truncate_text(input_text, 50),
-            "summary": truncate_summary_complete(output_summary, 20)
+    ds = load_dataset("reddit_tifu", "short", split="train", trust_remote_code=True)
+    out = []
+    for s in ds:
+        inp = clean_text(s.get("text", s.get("document", "")))
+        tgt = clean_text(s.get("summary", s.get("tldr", "")))
+        out.append({
+            "text":    truncate_text(inp, 50),
+            "summary": truncate_summary_complete(tgt, 20),
         })
-    return processed_data
+    return out
 
 def process_billsum() -> list:
-    """
-    Load and process the BillSum dataset for training data.
-    
-    Uses 'bill_text' (or 'bill') and 'summary' keys.
-    """
     try:
-        dataset = load_dataset("billsum", split="train")
-    except Exception as e:
-        raise ValueError("Could not load the BillSum dataset. "
-                         "Please ensure it is available or adjust the dataset identifier.") from e
-
-    processed_data = []
-    for sample in dataset:
-        bill_text = clean_text(sample.get("bill_text", sample.get("bill", "")))
-        summary   = clean_text(sample.get("summary", ""))
-        processed_data.append({
-            "text":    truncate_text(bill_text, 50),
-            "summary": truncate_summary_complete(summary, 20)
+        ds = load_dataset("billsum", split="train")
+    except Exception:
+        print("⚠️  BillSum not found—skipping.", file=sys.stderr)
+        return []
+    out = []
+    for s in ds:
+        bill = clean_text(s.get("bill_text", s.get("bill", "")))
+        summ = clean_text(s.get("summary", ""))
+        out.append({
+            "text":    truncate_text(bill, 50),
+            "summary": truncate_summary_complete(summ, 20),
         })
-    return processed_data
+    return out
+
+def download_and_extract_newsroom(dest: str):
+    os.makedirs(dest, exist_ok=True)
+    tar_path = os.path.join(dest, "newsroom-release.tar")
+    print(f"⬇️  Downloading Newsroom to {tar_path}…")
+    urllib.request.urlretrieve(NEWSROOM_URL, tar_path)
+    print("📦 Extracting…")
+    with tarfile.open(tar_path) as tar:
+        tar.extractall(dest)
+    print("✅ Newsroom unpacked in", dest)
 
 def process_newsroom() -> list:
-    """
-    Load and process the Newsroom dataset for training data.
-    
-    Checks for 'text' (or falls back to 'document') and uses 'summary'.
-    """
-    try:
-        # allow execution of the Newsroom repo’s custom loading code
-        dataset = load_dataset("newsroom", split="train", trust_remote_code=True)
-    except Exception as e:
-        raise ValueError("Could not load the Newsroom dataset. "
-                         "Please ensure the dataset is available or adjust the dataset identifier.") from e
+    # 1) check manual override
+    manual_dir = os.getenv("NEWSROOM_DIR")
+    if manual_dir and os.path.isdir(manual_dir):
+        data_dir = manual_dir
+    else:
+        # 2) auto‑download if needed
+        if not os.path.isdir(AUTO_NEWSROOM_DIR) or not os.listdir(AUTO_NEWSROOM_DIR):
+            download_and_extract_newsroom(AUTO_NEWSROOM_DIR)
+        data_dir = AUTO_NEWSROOM_DIR
 
-    processed_data = []
-    for sample in dataset:
-        input_text     = clean_text(sample.get("text", sample.get("document", "")))
-        output_summary = clean_text(sample.get("summary", ""))
-        processed_data.append({
-            "text":    truncate_text(input_text, 50),
-            "summary": truncate_summary_complete(output_summary, 20)
+    try:
+        ds = load_dataset(
+            "newsroom",
+            data_dir=data_dir,
+            split="train",
+            trust_remote_code=True
+        )
+    except Exception as e:
+        print(f"⚠️  Failed to load Newsroom from {data_dir}: {e}", file=sys.stderr)
+        return []
+
+    out = []
+    for s in ds:
+        inp = clean_text(s.get("text", s.get("document", "")))
+        tgt = clean_text(s.get("summary", ""))
+        out.append({
+            "text":    truncate_text(inp, 50),
+            "summary": truncate_summary_complete(tgt, 20),
         })
-    return processed_data
+    return out
 
 def save_combined_data(output_file: str):
-    """
-    Load and process CNN/DailyMail, Reddit TIFU, BillSum, and Newsroom,
-    combine into one list, and save as JSON with keys 'text' and 'summary'.
-    """
-    combined = (
-        process_cnn_dailymail()
-      + process_reddit_tifu()
-      + process_billsum()
-      + process_newsroom()
-    )
+    parts = []
+    parts += process_cnn_dailymail()
+    parts += process_reddit_tifu()
+    parts += process_billsum()
+    parts += process_newsroom()
+
+    if not parts:
+        raise RuntimeError("No data processed—check your datasets.")
 
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(combined, f, ensure_ascii=False, indent=4)
-    print(f"\nCombined training data saved to: {output_file}")
+        json.dump(parts, f, ensure_ascii=False, indent=2)
+    print(f"\n🎉 Combined training data written to {output_file}")
 
 if __name__ == "__main__":
     save_combined_data("app/models/data/text/training_data.json")
