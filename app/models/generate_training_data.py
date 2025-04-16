@@ -27,9 +27,8 @@ def truncate_summary_complete(text: str, max_words: int) -> str:
     if len(words) <= max_words:
         return text if text and text[-1] in valid_endings else text + "."
     truncated = " ".join(words[:max_words])
-    if truncated[-1] in valid_endings:
+    if truncated and truncated[-1] in valid_endings:
         return truncated
-    # try to end at last punctuation
     last = max(truncated.rfind(p) for p in valid_endings)
     return truncated[: last + 1].strip() if last != -1 else truncated + "."
 
