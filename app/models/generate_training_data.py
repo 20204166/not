@@ -52,14 +52,11 @@ def process_cnn_dailymail() -> list:
     dataset = load_dataset("cnn_dailymail", "3.0.0", split="train")
     processed_data = []
     for sample in dataset:
-        # Use CNN/DailyMail keys
         article = clean_text(sample["article"])
         summary = clean_text(sample["highlights"])
-        truncated_article = truncate_text(article, 50)      # 50 words for article
-        truncated_summary = truncate_summary_complete(summary, 20)  # 20 words for summary
         processed_data.append({
-            "text": truncated_article,
-            "summary": truncated_summary
+            "text":     truncate_text(article, 50),
+            "summary":  truncate_summary_complete(summary, 20)
         })
     return processed_data
 
@@ -67,22 +64,16 @@ def process_reddit_tifu() -> list:
     """
     Load and process the Reddit TIFU dataset (short version) for training data.
     
-    This function checks if the sample already contains 'text' and 'summary';
-    if not, it falls back to using 'document' for the input and 'tldr' for the summary.
-    The output dictionaries always contain keys "text" and "summary".
+    Checks for 'text'/'summary', otherwise falls back to 'document'/'tldr'.
     """
-    # Allow custom code execution for Reddit TIFU.
     dataset = load_dataset("reddit_tifu", "short", split="train", trust_remote_code=True)
     processed_data = []
     for sample in dataset:
-        # Prefer "text" and "summary" if they exist; otherwise, fallback.
         input_text = clean_text(sample.get("text", sample.get("document", "")))
         output_summary = clean_text(sample.get("summary", sample.get("tldr", "")))
-        truncated_text = truncate_text(input_text, 50)
-        truncated_summary = truncate_summary_complete(output_summary, 20)
         processed_data.append({
-            "text": truncated_text,
-            "summary": truncated_summary
+            "text":    truncate_text(input_text, 50),
+            "summary": truncate_summary_complete(output_summary, 20)
         })
     return processed_data
 
@@ -90,10 +81,7 @@ def process_billsum() -> list:
     """
     Load and process the BillSum dataset for training data.
     
-    The BillSum dataset is assumed to contain legislative bills and summaries.
-    The bill text is accessed via the key 'bill_text' (falling back to 'bill')
-    and the summary under the key 'summary'. Outputs dictionaries with keys 
-    "text" and "summary".
+    Uses 'bill_text' (or 'bill') and 'summary' keys.
     """
     try:
         dataset = load_dataset("billsum", split="train")
@@ -104,12 +92,10 @@ def process_billsum() -> list:
     processed_data = []
     for sample in dataset:
         bill_text = clean_text(sample.get("bill_text", sample.get("bill", "")))
-        summary = clean_text(sample.get("summary", ""))
-        truncated_bill = truncate_text(bill_text, 50)
-        truncated_summary = truncate_summary_complete(summary, 20)
+        summary   = clean_text(sample.get("summary", ""))
         processed_data.append({
-            "text": truncated_bill,
-            "summary": truncated_summary
+            "text":    truncate_text(bill_text, 50),
+            "summary": truncate_summary_complete(summary, 20)
         })
     return processed_data
 
@@ -117,49 +103,41 @@ def process_newsroom() -> list:
     """
     Load and process the Newsroom dataset for training data.
     
-    This function checks if the sample contains a 'text' key; if not, it uses the
-    'document' key for the news article. The summary is expected to be under 'summary'.
-    Outputs dictionaries with keys "text" and "summary".
+    Checks for 'text' (or falls back to 'document') and uses 'summary'.
     """
     try:
-        dataset = load_dataset("newsroom", split="train")
+        # allow execution of the Newsroom repo’s custom loading code
+        dataset = load_dataset("newsroom", split="train", trust_remote_code=True)
     except Exception as e:
         raise ValueError("Could not load the Newsroom dataset. "
                          "Please ensure the dataset is available or adjust the dataset identifier.") from e
 
     processed_data = []
     for sample in dataset:
-        input_text = clean_text(sample.get("text", sample.get("document", "")))
+        input_text     = clean_text(sample.get("text", sample.get("document", "")))
         output_summary = clean_text(sample.get("summary", ""))
-        truncated_article = truncate_text(input_text, 50)
-        truncated_summary = truncate_summary_complete(output_summary, 20)
         processed_data.append({
-            "text": truncated_article,
-            "summary": truncated_summary
+            "text":    truncate_text(input_text, 50),
+            "summary": truncate_summary_complete(output_summary, 20)
         })
     return processed_data
 
 def save_combined_data(output_file: str):
     """
-    Load and process the CNN/DailyMail, Reddit TIFU, BillSum, and Newsroom datasets,
-    combine them into one list, and save the resulting data to a JSON file.
-    
-    The final output JSON will contain a list of dictionaries, each with keys:
-    "text" and "summary".
+    Load and process CNN/DailyMail, Reddit TIFU, BillSum, and Newsroom,
+    combine into one list, and save as JSON with keys 'text' and 'summary'.
     """
-    cnn_data = process_cnn_dailymail()
-    reddit_data = process_reddit_tifu()
-    billsum_data = process_billsum()
-    newsroom_data = process_newsroom()
-    combined_data = cnn_data + reddit_data + billsum_data + newsroom_data
+    combined = (
+        process_cnn_dailymail()
+      + process_reddit_tifu()
+      + process_billsum()
+      + process_newsroom()
+    )
 
-    # Create the directory if it doesn't exist.
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(combined_data, f, ensure_ascii=False, indent=4)
+        json.dump(combined, f, ensure_ascii=False, indent=4)
     print(f"\nCombined training data saved to: {output_file}")
 
 if __name__ == "__main__":
-    # Specify the output file for the combined training data.
-    output_file = "app/models/data/text/training_data.json"
-    save_combined_data(output_file)
+    save_combined_data("app/models/data/text/training_data.json")
