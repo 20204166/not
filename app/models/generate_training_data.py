@@ -65,7 +65,8 @@ def process_reddit_tifu() -> list:
     
     This dataset uses the keys 'document' for the input text and 'tldr' for the summary.
     """
-    dataset = load_dataset("reddit_tifu", "short", split="train")
+    # Pass trust_remote_code=True to allow execution of the custom code.
+    dataset = load_dataset("reddit_tifu", "short", split="train", trust_remote_code=True)
     processed_data = []
     for sample in dataset:
         document = clean_text(sample.get("document", ""))
