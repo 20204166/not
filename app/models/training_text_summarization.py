@@ -2,25 +2,29 @@ import os
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 import tensorflow as tf
-# List and configure GPUs before any TensorFlow operations
-print("TensorFlow version:", tf.__version__)
+
+# 1) Discover GPUs
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        print("Enabled memory growth on GPUs:", gpus)
-    except RuntimeError as e:
-        print("Error setting GPU memory growth:", e)
+    # 2) Set memory growth *before* any other TF ops
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    print("Enabled memory growth on GPUs:", gpus)
 else:
-    print("No GPU found. TensorFlow will default to CPU if no GPU is present.")
+    print("No GPUs found; using CPU.")
 
-# Test a simple matrix multiplication to verify GPU availability
+# 3) Now it’s safe to import XLA and run any test ops
+tf.config.optimizer.set_jit(True)
+print("TensorFlow version:", tf.__version__)
+
+# Test a simple matmul to verify things really are on GPU
 with tf.device('/GPU:0' if gpus else '/CPU:0'):
     a = tf.random.normal([1000, 1000])
     b = tf.random.normal([1000, 1000])
     c = tf.matmul(a, b)
 print("Operation result shape:", c.shape)
+os.system("nvidia-smi")
+
 
 # Optionally show NVIDIA-SMI
 os.system("nvidia-smi")
