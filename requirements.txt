@@ -4,8 +4,8 @@ keras==3.5.0
 pandas==2.2.3
 numpy==1.26.4
 scikit-learn==1.2.2
-torch==2.5.1+cu121
-torchvision==0.20.1+cu121
+torch==2.5.1
+torchvision==0.20.1
 transformers==4.47.0
 sentence-transformers==3.3.1
 tokenizers==0.21.0

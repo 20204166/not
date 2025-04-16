@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-notes-config
+  namespace: ai-notes
+data:
+  FLASK_ENV: "production"
+  SECRET_KEY: "replace-with-your-secret"
