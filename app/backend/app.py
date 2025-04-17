@@ -130,6 +130,14 @@ def process_note() -> Any:
     }
     return jsonify(response), 200
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """
+    Simple health endpoint for Kubernetes liveness/readiness probes.
+    """
+    return jsonify({"status": "ok"}), 200
+
+
 if __name__ == '__main__':
     # Run the Flask development server on port 5000 with debug mode enabled.
     app.run(debug=True, port=5000)
