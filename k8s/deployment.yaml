@@ -3,10 +3,8 @@ kind: Deployment
 metadata:
   name: ai-notes-backend
   namespace: ai-notes
-  labels:
-    app: ai-notes-backend
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: ai-notes-backend
@@ -16,30 +14,32 @@ spec:
         app: ai-notes-backend
     spec:
       containers:
-        - name: backend
-          image: docker.io/20204166/not_backend:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 5000
-          envFrom:
-            - configMapRef:
-                name: ai-notes-config
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
-            limits:
-              cpu: "500m"
-              memory: "1Gi"
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 20
-            periodSeconds: 20
+      - name: backend
+        image: 20204166/not_backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - configMapRef:
+            name: ai-notes-config
+        resources:
+          requests:
+            cpu:    "250m"
+            memory: "512Mi"
+          limits:
+            cpu:    "500m"
+            memory: "1Gi"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 20
+          periodSeconds: 20
+          failureThreshold: 3
