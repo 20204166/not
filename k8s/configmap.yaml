@@ -5,4 +5,4 @@ metadata:
   namespace: ai-notes
 data:
   FLASK_ENV: "production"
-  SECRET_KEY: "replace-with-your-secret"
+  SECRET_KEY: "sImyHkLJS1y/0eWPkcZxJSmqrcR5nUCJOAAxXoMKbrs="
