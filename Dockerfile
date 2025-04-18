@@ -2,35 +2,27 @@
 
 FROM python:3.10-slim
 
-# Don’t write .pyc files & enable unbuffered logging
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Don’t write .pyc and unbuffered stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    FLASK_ENV=production
 
 WORKDIR /app
 
 # Install OS deps
 RUN apt-get update \
- && apt-get install -y --no-install-recommends gcc curl \
+ && apt-get install -y --no-install-recommends gcc \
  && rm -rf /var/lib/apt/lists/*
 
-# Copy & install Python deps (including gunicorn in requirements.txt)
-COPY requirements.txt /app/requirements.txt
+# Copy and install Python deps (including gunicorn)
+COPY requirements.txt .
+# make sure requirements.txt now contains a line: gunicorn
 RUN pip install --upgrade pip \
- && pip install -r /app/requirements.txt
+ && pip install -r requirements.txt
 
-# Copy the rest of your code
-COPY . /app
+# Copy your app code
+COPY . .
 
-# Flask env
-ENV FLASK_APP=run.py \
-    FLASK_ENV=production
-
-# Expose port
+# Expose and run
 EXPOSE 5000
-
-# Let Docker / K8s know how to check liveness
-HEALTHCHECK --interval=30s --timeout=5s \
-  CMD curl --fail http://localhost:5000/health || exit 1
-
-# Start your app
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:5000", "run:app"]
