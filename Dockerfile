@@ -33,4 +33,4 @@ HEALTHCHECK --interval=30s --timeout=5s \
   CMD curl --fail http://localhost:5000/health || exit 1
 
 # Start your app
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
