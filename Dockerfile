@@ -16,11 +16,12 @@ RUN apt-get update \
 
 # Copy and install Python deps (including gunicorn)
 COPY requirements.txt .
-# make sure requirements.txt now contains a line: gunicorn
-RUN pip install --upgrade pip \
- && pip install -r requirements.txt
+# Install pip deps + gunicorn
+RUN pip install --upgrade pip && \
+    pip install gunicorn && \
+    pip install -r requirements.txt
 
-# Copy your app code
+ # Copy your app code
 COPY . .
 
 # Expose and run
