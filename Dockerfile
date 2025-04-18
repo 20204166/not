@@ -20,7 +20,7 @@ RUN pip install --upgrade pip \
  && pip install gunicorn
 
 # Copy the rest of your code
-COPY . /app
+COPY . /app 
 
 # Make sure /app is readable/executable
 RUN chmod -R 755 /app
