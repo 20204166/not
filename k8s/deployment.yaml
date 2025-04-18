@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: 20204166/not_backend:latest
+        image:  docker.io/20204166/not_backend:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
