@@ -1,5 +1,3 @@
-# Dockerfile
-
 FROM python:3.10-slim
 
 # Don’t write .pyc and force unbuffered logging
@@ -8,24 +6,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install gcc (for any native deps) and clean up
+# System deps for optional audio and TF
 RUN apt-get update \
- && apt-get install -y --no-install-recommends gcc \
+ && apt-get install -y --no-install-recommends \
+      build-essential \
+      libsndfile1 \
+      portaudio19-dev \
+      ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy & install requirements, then gunicorn
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt .
 RUN pip install --upgrade pip \
- && pip install -r requirements.txt \
- && pip install gunicorn
+ && pip install -r requirements.txt
 
-# Copy the rest of your code
-COPY . /app 
-
-# Make sure /app is readable/executable
-RUN chmod -R 755 /app
+# Copy code
+COPY . .
 
 EXPOSE 5000
 
-# Launch your factory app
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:create_app()"]
+# Use run.py’s app object as Gunicorn WSGI entrypoint
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app"]
