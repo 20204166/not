@@ -1,0 +1,14 @@
+[33m8e82eec[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: commit: j
+[33m4e73e60[m HEAD@{1}: commit: yj
+[33mfb13fc4[m HEAD@{2}: commit: y
+[33m6ab9294[m HEAD@{3}: commit: yu
+[33mb9d9e59[m HEAD@{4}: commit: yj
+[33m46b298c[m HEAD@{5}: pull --tags origin main: Fast-forward
+[33m88d74bb[m HEAD@{6}: pull --tags origin main: Fast-forward
+[33m1eec227[m HEAD@{7}: pull --tags origin main: Fast-forward
+[33mdc175f6[m HEAD@{8}: pull --rebase origin main (finish): returning to refs/heads/main
+[33mdc175f6[m HEAD@{9}: pull --rebase origin main (pick): Remove app/__init__.py and add tests directory
+[33m820c116[m HEAD@{10}: pull --rebase origin main (pick): Remove app/__init__.py and add tests directory
+[33mce77d6a[m HEAD@{11}: pull --rebase origin main (start): checkout ce77d6a2e25310566dbd8d9f7c45f0cc7bd80ca2
+[33m7c4e909[m HEAD@{12}: reset: moving to 7c4e909842f1955a28a0b8a072b43fff548a9c61
+[33m7c4e909[m HEAD@{13}: commit (cherry-pick): Remove app/__init__.py and add tests directory
