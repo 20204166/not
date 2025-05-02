@@ -81,7 +81,8 @@ def create_dataset(input_texts, target_texts, batch_size, tok_in, tok_tgt):
         dec_in_seq = pad_sequences([dec_seq], maxlen=max_length_target, padding='post')[0]
         dec_tgt_seq = np.zeros_like(dec_in_seq)
         dec_tgt_seq[:-1] = dec_in_seq[1:]
-        return ((enc_seq, dec_in_seq), dec_tgt_seq)
+        return enc_seq, dec_in_seq, dec_tgt_seq
+
 
     def _tf_wrapper(inp, tgt):
         enc_in, dec_in, dec_tgt = tf.py_function(
