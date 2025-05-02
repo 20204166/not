@@ -70,6 +70,7 @@ def load_tokenizer(path: str):
 
 def create_dataset(input_texts, target_texts, batch_size, tok_in, tok_tgt):
     dataset = tf.data.Dataset.from_tensor_slices((input_texts, target_texts))
+
     def _process(input_str, target_str):
         inp = input_str.numpy().decode('utf-8')
         tgt = target_str.numpy().decode('utf-8')
@@ -77,15 +78,24 @@ def create_dataset(input_texts, target_texts, batch_size, tok_in, tok_tgt):
         dec_seq = tok_tgt.texts_to_sequences([tgt])[0]
         enc_seq = pad_sequences([enc_seq], maxlen=max_length_input, padding='post')[0]
         dec_in_seq = pad_sequences([dec_seq], maxlen=max_length_target, padding='post')[0]
-        # Shift for decoder target
         dec_tgt_seq = np.zeros_like(dec_in_seq)
         dec_tgt_seq[:-1] = dec_in_seq[1:]
-        return (enc_seq.astype(np.int32), dec_in_seq.astype(np.int32)), dec_tgt_seq.astype(np.int32)
+        return ((enc_seq.astype(np.int32), dec_in_seq.astype(np.int32)), dec_tgt_seq.astype(np.int32))
+
     def _tf_wrap(inp, tgt):
-        return tf.py_function(_process, [inp, tgt], [tf.int32, tf.int32, tf.int32])
+        return tf.py_function(_process, [inp, tgt],
+                              (tf.TensorSpec(shape=(max_length_input,), dtype=tf.int32),
+                               tf.TensorSpec(shape=(max_length_target,), dtype=tf.int32),
+                               tf.TensorSpec(shape=(max_length_target,), dtype=tf.int32)))
+
+    def restructure(enc_in, dec_in, dec_tgt):
+        return (enc_in, dec_in), dec_tgt
+
     dataset = dataset.map(_tf_wrap, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.map(restructure, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.shuffle(1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
+
 
 def build_seq2seq_model(vocab_in, vocab_tgt, emb_dim, max_in, max_tgt):
     # Encoder
