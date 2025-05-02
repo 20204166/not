@@ -1,16 +1,21 @@
-Flask
+# Kaggle Python 3.10.12 (T4 x2 GPU runtime)
 tensorflow==2.18.0
-tensorflow-text==2.18.0
-keras==3.5.0
-pandas==2.2.3
-numpy==1.26.4
-scikit-learn==1.2.2
-pylibraft-cu12==24.12.0 
-rmm-cu12==24.12.0
-torch==2.5.1
-torchvision==0.20.1
-transformers==4.47.0
-sentence-transformers==3.3.1
-tokenizers==0.21.0
-matplotlib==3.7.5
-gunicorn
+tensorflow-text==2.18.1
+tf_keras==2.18.0
+
+# PyTorch (CUDA 12.x)
+torch==2.5.1+cu124
+torchvision==0.20.1+cu124
+
+# RAPIDS (CUDA 12.x)
+cudf-cu12==25.2.2
+cuml-cu12==25.2.1
+pylibraft-cu12==25.2.0
+rmm-cu12==25.2.0
+
+# NLP Libraries
+transformers==4.51.1
+sentence-transformers==3.4.1
+
+# Reinforcement Learning
+gymnasium==0.29.0
