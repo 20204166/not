@@ -1,25 +1,55 @@
+# GTK/Cairo bindings
 pycairo
+
+# rich (sigstore, bigframes, ibis-framework)
 rich>=13.0,<14.0
+
+# fsspec for datasets & gcsfs
 fsspec[http]==2024.10.0
-scikit-learn>=1.4.0,<2.0
-nltk==3.2.4
+
+# scikit-learn (nilearn, imbalanced-learn, mlxtend, category-encoders)
+scikit-learn>=1.4.0,<1.6.0
+
+# nltk (preprocessing) & textblob
+nltk>=3.9,<4.0
+
+# Jupyter + pandas (google-colab)
 notebook==6.5.5
 pandas==2.2.2
-scipy>=1.7.0,<1.14.0
-gymnasium>=1.0.0
-protobuf>=4.25.2,<6.0.0
-google-api-core[grpc]>=2.19.1,<3.0.0
+
+# SciPy (gensim, tsfresh)
+scipy>=1.14.0,<1.16.0
+
+# gymnasium (kaggle-environments, stable-baselines3, dopamine-rl)
+gymnasium==0.29.0
+
+# Protobuf (tensorflow-metadata, translate)
+protobuf>=4.25.2,<5.0.0
+
+# Google core libs (spark-connect, pandas-gbq, bigtable)
+google-api-core[grpc]>=2.16.0,<3.0.0
+
+# toolz (ibis-framework)
 toolz>=0.11,<1.0
-matplotlib>=3.8.0
+
+# Matplotlib (plotnine, ydata-profiling)
+matplotlib>=3.8.0,<=3.10.0
+
+# Cryptography / OpenSSL (pydrive2)
 cryptography<44
 pyOpenSSL>=19.1.0,<=24.2.1
-pylibcugraph-cu12==25.2.0
-rmm-cu12==25.2.0
+
+# RAPIDS-CU12 pins
 pylibraft-cu12==25.2.0
-nvidia-cublas-cu12==12.4.5.8
-nvidia-cudnn-cu12==9.1.0.70
-nvidia-cufft-cu12==11.2.1.3
-nvidia-curand-cu12==10.3.5.147
-nvidia-cusolver-cu12==11.6.1.9
-nvidia-cusparse-cu12==12.3.1.170
-nvidia-nvjitlink-cu12==12.4.127
+rmm-cu12==25.2.0
+pylibcugraph-cu12==25.2.0
+nx-cugraph-cu12==25.2.0
+
+# Additional data-science libs
+category-encoders>=1.0.0,<1.6.0
+google-cloud-automl>=1.14.0,<2.0.0
+google-cloud-translate>=3.19.5,<5.0.0
+ydata-profiling>=4.16.1,<4.17.0
+stable-baselines3>=2.1.0,<2.2.0
+textblob>=0.19.0
+gensim>=4.4.0
