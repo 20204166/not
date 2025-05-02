@@ -38,7 +38,6 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Global settings for maximum sequence lengths
 max_length_input = 50
 max_length_target = 20
 
@@ -55,7 +54,6 @@ def load_training_data(data_path: str):
         targets = [item["summary"] for item in data]
     else:
         raise ValueError("Training data must contain 'article'/'highlights' or 'text'/'summary'.")
-    # Wrap target texts
     targets = [f"<start> {t} <end>" for t in targets]
     return inputs, targets
 
@@ -68,41 +66,20 @@ def load_tokenizer(path: str):
     with open(path, 'r', encoding='utf-8') as f:
         return tf.keras.preprocessing.text.tokenizer_from_json(f.read())
 
-def create_dataset(input_texts, target_texts, batch_size, tok_in, tok_tgt):
-    dataset = tf.data.Dataset.from_tensor_slices((input_texts, target_texts))
+def preprocess_texts(texts, tokenizer, max_length):
+    sequences = tokenizer.texts_to_sequences(texts)
+    return pad_sequences(sequences, maxlen=max_length, padding='post')
 
-    def _process(input_str, target_str):
-        inp = input_str.numpy().decode('utf-8')
-        tgt = target_str.numpy().decode('utf-8')
-        enc_seq = tok_in.texts_to_sequences([inp])[0]
-        dec_seq = tok_tgt.texts_to_sequences([tgt])[0]
-
-        enc_seq = pad_sequences([enc_seq], maxlen=max_length_input, padding='post')[0]
-        dec_in_seq = pad_sequences([dec_seq], maxlen=max_length_target, padding='post')[0]
-        dec_tgt_seq = np.zeros_like(dec_in_seq)
-        dec_tgt_seq[:-1] = dec_in_seq[1:]
-        return enc_seq, dec_in_seq, dec_tgt_seq
-
-
-    def _tf_wrapper(inp, tgt):
-        enc_in, dec_in, dec_tgt = tf.py_function(
-            func=lambda i, t: _process(i, t),
-            inp=[inp, tgt],
-            Tout=[tf.int32, tf.int32, tf.int32]
-        )
-
-        # Set known shapes to avoid 'unknown TensorShape'
-        enc_in.set_shape([max_length_input])
-        dec_in.set_shape([max_length_target])
-        dec_tgt.set_shape([max_length_target])
-        return (enc_in, dec_in), dec_tgt
-
-    dataset = dataset.map(_tf_wrapper, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.shuffle(1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    return dataset
+def prepare_decoder_sequences(sequences):
+    dec_in = sequences[:, :-1]
+    dec_tgt = sequences[:, 1:]
+    pad_width = max_length_target - dec_in.shape[1]
+    if pad_width > 0:
+        dec_in = np.pad(dec_in, ((0, 0), (0, pad_width)), mode='constant')
+        dec_tgt = np.pad(dec_tgt, ((0, 0), (0, pad_width)), mode='constant')
+    return dec_in, dec_tgt
 
 def build_seq2seq_model(vocab_in, vocab_tgt, emb_dim, max_in, max_tgt):
-    # Encoder
     enc_inputs = Input(shape=(max_in,), name="enc_inputs")
     enc_emb = Embedding(vocab_in, emb_dim, name="enc_emb")(enc_inputs)
     enc_cell1 = LSTMCell(64, name="enc_cell1")
@@ -113,7 +90,6 @@ def build_seq2seq_model(vocab_in, vocab_tgt, emb_dim, max_in, max_tgt):
     enc_outs, h2, c2 = enc_rnn2(out1)
     enc_states = [h2, c2]
 
-    # Decoder
     dec_inputs = Input(shape=(max_tgt,), name="dec_inputs")
     dec_emb = Embedding(vocab_tgt, emb_dim, name="dec_emb")(dec_inputs)
     dec_cell1 = LSTMCell(64, name="dec_cell1")
@@ -123,7 +99,6 @@ def build_seq2seq_model(vocab_in, vocab_tgt, emb_dim, max_in, max_tgt):
     dec_rnn2 = tf.keras.layers.RNN(dec_cell2, return_sequences=True, return_state=True, name="dec_rnn2")
     dec_out2, _, _ = dec_rnn2(dec_out1)
 
-    # Attention & output
     attn = Attention(name="attn_layer")([dec_out2, enc_outs])
     concat = Concatenate(name="concat_layer")([attn, dec_out2])
     outputs = Dense(vocab_tgt, activation='softmax', name="decoder_dense")(concat)
@@ -182,8 +157,19 @@ def train_model(data_path, epochs=10, batch_size=64, emb_dim=50):
     vs_in = len(tok_in.word_index) + 1
     vs_tgt = len(tok_tgt.word_index) + 1
 
-    train_ds = create_dataset(train_in, train_tgt, batch_size, tok_in, tok_tgt)
-    val_ds   = create_dataset(val_in,   val_tgt,   batch_size, tok_in, tok_tgt)
+    train_enc = preprocess_texts(train_in, tok_in, max_length_input)
+    train_dec = preprocess_texts(train_tgt, tok_tgt, max_length_target)
+    train_dec_in, train_dec_tgt = prepare_decoder_sequences(train_dec)
+
+    val_enc = preprocess_texts(val_in, tok_in, max_length_input)
+    val_dec = preprocess_texts(val_tgt, tok_tgt, max_length_target)
+    val_dec_in, val_dec_tgt = prepare_decoder_sequences(val_dec)
+
+    train_ds = tf.data.Dataset.from_tensor_slices(((train_enc, train_dec_in), train_dec_tgt))
+    val_ds = tf.data.Dataset.from_tensor_slices(((val_enc, val_dec_in), val_dec_tgt))
+
+    train_ds = train_ds.shuffle(1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    val_ds = val_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 
     model_path = "app/models/saved_model/summarization_model.keras"
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -199,9 +185,9 @@ def train_model(data_path, epochs=10, batch_size=64, emb_dim=50):
         CustomEval(val_ds)
     ]
 
-    history = model.fit(train_ds, epochs=epochs, verbose=2, callbacks=callbacks, validation_data=val_ds)
+    with tf.device('/GPU:0'):
+        history = model.fit(train_ds, epochs=epochs, verbose=2, callbacks=callbacks, validation_data=val_ds)
 
-    # Save tokenizers
     with open(tok_in_path, 'w', encoding='utf-8') as f:
         f.write(tok_in.to_json())
     with open(tok_tgt_path, 'w', encoding='utf-8') as f:
