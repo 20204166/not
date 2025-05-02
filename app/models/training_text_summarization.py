@@ -81,22 +81,22 @@ def create_dataset(input_texts, target_texts, batch_size, tok_in, tok_tgt):
         dec_in_seq = pad_sequences([dec_seq], maxlen=max_length_target, padding='post')[0]
         dec_tgt_seq = np.zeros_like(dec_in_seq)
         dec_tgt_seq[:-1] = dec_in_seq[1:]
-
         return ((enc_seq, dec_in_seq), dec_tgt_seq)
 
-    def _wrap_tf(inp, tgt):
-        (enc_in, dec_in), dec_tgt = tf.py_function(
-            _process,
-            [inp, tgt],
-            [tf.int32, tf.int32, tf.int32]
+    def _tf_wrapper(inp, tgt):
+        enc_in, dec_in, dec_tgt = tf.py_function(
+            func=lambda i, t: _process(i, t),
+            inp=[inp, tgt],
+            Tout=[tf.int32, tf.int32, tf.int32]
         )
-        # Explicitly set shapes
+
+        # Set known shapes to avoid 'unknown TensorShape'
         enc_in.set_shape([max_length_input])
         dec_in.set_shape([max_length_target])
         dec_tgt.set_shape([max_length_target])
         return (enc_in, dec_in), dec_tgt
 
-    dataset = dataset.map(_wrap_tf, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.map(_tf_wrapper, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.shuffle(1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
 
