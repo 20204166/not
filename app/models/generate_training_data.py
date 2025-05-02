@@ -8,11 +8,6 @@ import sys
 import urllib.request
 import tarfile
 
-# URL to the Cornell Newsroom release
-NEWSROOM_URL = "https://lil.nlp.cornell.edu/resources/newsroom/r8625bda324/newsroom-release.tar"
-# Where we'll unpack if NEWSROOM_DIR isn’t set
-AUTO_NEWSROOM_DIR = os.path.join(os.getcwd(), "manual_data", "newsroom")
-
 def clean_text(text: str) -> str:
     text = re.sub(r"[^a-zA-Z0-9\s\.,;:!?'\-]", "", text)
     text = re.sub(r"\s+", " ", text)
@@ -72,54 +67,13 @@ def process_billsum() -> list:
         })
     return out
 
-def download_and_extract_newsroom(dest: str):
-    os.makedirs(dest, exist_ok=True)
-    tar_path = os.path.join(dest, "newsroom-release.tar")
-    print(f"⬇️  Downloading Newsroom to {tar_path}…")
-    urllib.request.urlretrieve(NEWSROOM_URL, tar_path)
-    print("📦 Extracting…")
-    with tarfile.open(tar_path) as tar:
-        tar.extractall(dest)
-    print("✅ Newsroom unpacked in", dest)
-
-def process_newsroom() -> list:
-    # 1) check manual override
-    manual_dir = os.getenv("NEWSROOM_DIR")
-    if manual_dir and os.path.isdir(manual_dir):
-        data_dir = manual_dir
-    else:
-        # 2) auto‑download if needed
-        if not os.path.isdir(AUTO_NEWSROOM_DIR) or not os.listdir(AUTO_NEWSROOM_DIR):
-            download_and_extract_newsroom(AUTO_NEWSROOM_DIR)
-        data_dir = AUTO_NEWSROOM_DIR
-
-    try:
-        ds = load_dataset(
-            "newsroom",
-            data_dir=data_dir,
-            split="train",
-            trust_remote_code=True
-        )
-    except Exception as e:
-        print(f"⚠️  Failed to load Newsroom from {data_dir}: {e}", file=sys.stderr)
-        return []
-
-    out = []
-    for s in ds:
-        inp = clean_text(s.get("text", s.get("document", "")))
-        tgt = clean_text(s.get("summary", ""))
-        out.append({
-            "text":    truncate_text(inp, 50),
-            "summary": truncate_summary_complete(tgt, 20),
-        })
-    return out
 
 def save_combined_data(output_file: str):
     parts = []
     parts += process_cnn_dailymail()
     parts += process_reddit_tifu()
     parts += process_billsum()
-    parts += process_newsroom()
+
 
     if not parts:
         raise RuntimeError("No data processed—check your datasets.")
