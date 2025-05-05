@@ -11,11 +11,13 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Install OS dependencies for audio and science libs (gcc, PortAudio, etc.)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc curl \ 
-    libasound2 libasound2-dev \ 
-    libportaudio2 libportaudiocpp0 portaudio19-dev \ 
+RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
+  && apt-get install -y --no-install-recommends \
+       gcc curl libasound2 libasound2-dev \
+       libportaudio2 libportaudiocpp0 portaudio19-dev \
   && rm -rf /var/lib/apt/lists/*
+
 
 # Copy requirements and install Python dependencies (incl. Flask, TensorFlow, Gunicorn, etc.)
 COPY requirements.txt /app/requirements.txt
