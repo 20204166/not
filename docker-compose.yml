@@ -1,11 +1,15 @@
-version: '3.8'
+
 
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        KAGGLE_USERNAME: ${KAGGLE_USERNAME}
+        KAGGLE_KEY:      ${KAGGLE_KEY}
     image: 20204166/not_backend:latest
+ 
     ports:
       - "5000:5000"        # Expose Flask on host:5000
     volumes:
