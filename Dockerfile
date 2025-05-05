@@ -12,19 +12,23 @@ WORKDIR /app
 
 # Install OS dependencies for audio and science libs (gcc, PortAudio, etc.)
 # Install OS dependencies for audio, science libs, and C extensions (GCC, Cairo, etc.)
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      build-essential \
-      pkg-config \
-      libcairo2-dev \
-      python3-dev \
-      gcc \
-      curl \
-      libasound2 libasound2-dev \
-      libportaudio2 libportaudiocpp0 portaudio19-dev \
- && rm -rf /var/lib/apt/lists/*
+# In your Dockerfile, replace the existing apt-get step with this:
 
-
+  RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+       build-essential \
+       pkg-config \
+       python3-dev \
+       libcairo2-dev \
+       libjpeg-dev \
+       libpng-dev \
+       zlib1g-dev \
+       ffmpeg \
+       libasound2 libasound2-dev \
+       libportaudio2 libportaudiocpp0 portaudio19-dev \
+       curl \
+  && rm -rf /var/lib/apt/lists/*
+ 
 # Copy requirements and install Python dependencies (incl. Flask, TensorFlow, Gunicorn, etc.)
 COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip && pip install -r /app/requirements.txt
