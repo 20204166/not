@@ -6,7 +6,7 @@ metadata:
   labels:
     app: ai-notes-backend
 spec:
-  replicas: 1  # start with a single replica (can scale out later)
+  replicas: 1 
   selector:
     matchLabels:
       app: ai-notes-backend

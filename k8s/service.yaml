@@ -4,7 +4,7 @@ metadata:
   name: ai-notes-backend
   namespace: ai-notes
 spec:
-  type: LoadBalancer  # Use NodePort for on-prem clusters without a LoadBalancer
+  type: LoadBalancer  
   selector:
     app: ai-notes-backend
   ports:

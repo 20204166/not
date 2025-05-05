@@ -5,4 +5,4 @@ metadata:
   namespace: ai-notes
 data:
   FLASK_ENV: "production"
-  # You can add other non-sensitive config values here if needed.
+  
