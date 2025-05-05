@@ -1,6 +1,6 @@
 # Use a slim Python 3.10 base image (suitable for ML apps)
 #
-FROM python:3.10-slim-bullseye@sha256:e14e763d9b3deb795535e8e6a48ecfbfa8b7d863c98eab81a9c0703a7ce32c26
+FROM python:3.10-slim-bookworm
 
 
 # Don’t generate .pyc files and enable unbuffered logging
@@ -16,6 +16,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
        gcc curl libasound2 libasound2-dev \
        libportaudio2 libportaudiocpp0 portaudio19-dev \
+  && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
 
