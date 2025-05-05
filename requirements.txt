@@ -1,55 +1,18 @@
-# GTK/Cairo bindings
-pycairo
-
-# rich (sigstore, bigframes, ibis-framework)
-rich>=13.0,<14.0
-
-# fsspec for datasets & gcsfs
-fsspec[http]==2024.10.0
-
-# scikit-learn (nilearn, imbalanced-learn, mlxtend, category-encoders)
-scikit-learn>=1.4.0,<1.6.0
-
-# nltk (preprocessing) & textblob
-nltk>=3.9,<4.0
-
-# Jupyter + pandas (google-colab)
-notebook==6.5.5
-pandas==2.2.2
-
-# SciPy (gensim, tsfresh)
-scipy>=1.14.0,<1.16.0
-
-# gymnasium (kaggle-environments, stable-baselines3, dopamine-rl)
-gymnasium==0.29.0
-
-# Protobuf (tensorflow-metadata, translate)
-protobuf>=4.25.2,<5.0.0
-
-# Google core libs (spark-connect, pandas-gbq, bigtable)
-google-api-core[grpc]>=2.16.0,<3.0.0
-
-# toolz (ibis-framework)
-toolz>=0.11,<1.0
-
-# Matplotlib (plotnine, ydata-profiling)
-matplotlib>=3.8.0,<=3.10.0
-
-# Cryptography / OpenSSL (pydrive2)
-cryptography<44
-pyOpenSSL>=19.1.0,<=24.2.1
-
-# RAPIDS-CU12 pins
-pylibraft-cu12==25.2.0
-rmm-cu12==25.2.0
-pylibcugraph-cu12==25.2.0
-nx-cugraph-cu12==25.2.0
-
-# Additional data-science libs
-category-encoders>=1.0.0,<1.6.0
-google-cloud-automl>=1.14.0,<2.0.0
-google-cloud-translate>=3.19.5,<5.0.0
-ydata-profiling>=4.16.1,<4.17.0
-stable-baselines3>=2.1.0,<2.2.0
-textblob>=0.19.0
-gensim>=4.4.0
+Flask==2.2.2
+gunicorn==20.1.0
+tensorflow==2.17.1
+tensorflow-text==2.17.0
+keras==3.5.0
+pandas==2.2.3
+numpy==1.26.4
+scikit-learn==1.2.2
+torch==2.5.1
+torchvision==0.20.1
+transformers==4.47.0
+sentence-transformers==3.3.1
+tokenizers==0.21.0
+matplotlib==3.7.5
+SpeechRecognition==3.8.1
+requests==2.28.1
+pydub==0.25.1
+pydantic==1.10.12
