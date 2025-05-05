@@ -2,7 +2,7 @@
 FROM python:3.10-slim-bookworm
 
 # Don’t generate .pyc files and enable unbuffered logging
-ENV PYTHONDONTWRITEBYTECODE=1 
+ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Set the working directory in the container
@@ -22,24 +22,20 @@ RUN apt-get update \
       torchvision==0.20.1+cpu \
       --index-url https://download.pytorch.org/whl/cpu
 
-# ---- 2) Install the rest of your Python requirements ----
+# ---- 2) Install your Python requirements ----
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
  && rm -rf /root/.cache/pip
 
-# ---- 3) Install Kaggle CLI & fetch your dataset ----
+# ---- 3) Single RUN: install Kaggle CLI, auth, download & unzip dataset ----
 RUN pip install --no-cache-dir kaggle \
  && mkdir -p /root/.kaggle \
  && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > /root/.kaggle/kaggle.json \
  && chmod 600 /root/.kaggle/kaggle.json \
- \
- # make the target folder, download & unzip in one go
- # after installing kaggle…
-RUN mkdir -p /app/models/saved_model \
-&& kaggle datasets download -d bekithembancube/saved-model -p /app/models/saved_model \
-&& unzip /app/models/saved_model/saved-model.zip -d /app/models/saved_model \
-&& rm /app/models/saved_model/saved-model.zip
-
+ && mkdir -p /app/models/saved_model \
+ && kaggle datasets download -d bekithembancube/saved-model -p /app/models/saved_model \
+ && unzip /app/models/saved_model/saved-model.zip -d /app/models/saved_model \
+ && rm /app/models/saved_model/saved-model.zip
 
 # ---- 4) Copy your application code ----
 COPY . /app
