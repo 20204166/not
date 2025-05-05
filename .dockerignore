@@ -5,3 +5,8 @@ __pycache__
 .git
 .gitignore
 node_modules
+app/models/data
+__pycache__/
+*.h5
+*.keras
+*.ipynb_checkpoints
