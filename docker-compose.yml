@@ -6,8 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        KAGGLE_USERNAME: ${KAGGLE_USERNAME}
-        KAGGLE_KEY:      ${KAGGLE_KEY}
+        KAGGLE_USERNAME: ${"bekithembancube"}
+        KAGGLE_KEY:      ${"5279d9da3a72396b9d97a0cd6e8a58c6"}
     image: 20204166/not_backend:latest
  
     ports:
