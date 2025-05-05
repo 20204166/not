@@ -11,13 +11,18 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Install OS dependencies for audio and science libs (gcc, PortAudio, etc.)
+# Install OS dependencies for audio, science libs, and C extensions (GCC, Cairo, etc.)
 RUN apt-get update \
-  && apt-get upgrade -y --no-install-recommends \
-  && apt-get install -y --no-install-recommends \
-       gcc curl libasound2 libasound2-dev \
-       libportaudio2 libportaudiocpp0 portaudio19-dev \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+ && apt-get install -y --no-install-recommends \
+      build-essential \
+      pkg-config \
+      libcairo2-dev \
+      python3-dev \
+      gcc \
+      curl \
+      libasound2 libasound2-dev \
+      libportaudio2 libportaudiocpp0 portaudio19-dev \
+ && rm -rf /var/lib/apt/lists/*
 
 
 # Copy requirements and install Python dependencies (incl. Flask, TensorFlow, Gunicorn, etc.)
