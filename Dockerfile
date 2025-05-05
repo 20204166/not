@@ -34,10 +34,12 @@ RUN pip install --no-cache-dir kaggle \
  && chmod 600 /root/.kaggle/kaggle.json \
  \
  # make the target folder, download & unzip in one go
- && mkdir -p app/models/saved_model \
- && kaggle datasets download -d bekithembancube/saved-model -p app/models/saved_model \
- && unzip app/models/saved_model/saved-model.zip -d app/models/saved_model \
- && rm app/models/saved_model/saved-model.zip
+ # after installing kaggle…
+RUN mkdir -p /app/models/saved_model \
+&& kaggle datasets download -d bekithembancube/saved-model -p /app/models/saved_model \
+&& unzip /app/models/saved_model/saved-model.zip -d /app/models/saved_model \
+&& rm /app/models/saved_model/saved-model.zip
+
 
 # ---- 4) Copy your application code ----
 COPY . /app
