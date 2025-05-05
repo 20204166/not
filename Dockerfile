@@ -13,22 +13,19 @@ WORKDIR /app
 # Install OS dependencies for audio and science libs (gcc, PortAudio, etc.)
 # Install OS dependencies for audio, science libs, and C extensions (GCC, Cairo, etc.)
 # In your Dockerfile, replace the existing apt-get step with this:
+# 1) Upgrade pip and install CPU-only PyTorch
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir \
+      torch==2.5.1+cpu \
+      torchvision==0.20.1+cpu \
+      --index-url https://download.pytorch.org/whl/cpu
 
-  RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-       build-essential \
-       pkg-config \
-       python3-dev \
-       libcairo2-dev \
-       libjpeg-dev \
-       libpng-dev \
-       zlib1g-dev \
-       ffmpeg \
-       libasound2 libasound2-dev \
-       libportaudio2 libportaudiocpp0 portaudio19-dev \
-       curl \
-  && rm -rf /var/lib/apt/lists/*
- 
+# 2) Install the rest of your requirements without caching
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# 3) Clean up any remaining cache
+RUN rm -rf /root/.cache/pip
 # Copy requirements and install Python dependencies (incl. Flask, TensorFlow, Gunicorn, etc.)
 COPY requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip && pip install -r /app/requirements.txt
