@@ -1,48 +1,47 @@
-import os
-import json
-import tensorflow as tf
 from flask import Flask, jsonify
+import os
 
 def create_app():
     app = Flask(__name__)
 
-    # --- Load summarization model ---
-    model_path = os.path.join(app.root_path, 'models', 'saved_model', 'summarization_model.keras')
-    try:
-        summarization_model = tf.keras.models.load_model(model_path)
-        app.logger.info("Summarization model loaded from %s", model_path)
-    except Exception as e:
-        app.logger.error("Failed to load summarization model: %s", e)
-        summarization_model = None
+    #  ─── Load Config ─────────────────────────────────────────────────────
+    # Choose the config class based on FLASK_ENV (or an env var of your choosing)
+    env = os.environ.get("FLASK_ENV", "development").title() + "Config"
+    app.config.from_object(f"app.config.{env}")
 
-    # --- Load tokenizers from JSON ---
+    #  ─── Initialize Logging / DB / etc. ──────────────────────────────────
+    # e.g. set logging level from app.config["LOGGING_LEVEL"]
+
+    #  ─── Load your summarization model & tokenizers ──────────────────────
+    import tensorflow as tf
     def load_tokenizer(path):
         with open(path, 'r', encoding='utf-8') as f:
-            data = f.read()
-        return tf.keras.preprocessing.text.tokenizer_from_json(data)
+            return tf.keras.preprocessing.text.tokenizer_from_json(f.read())
 
-    tok_in_path = os.path.join(app.root_path, 'models', 'saved_model', 'tokenizer_input.json')
-    tok_tar_path = os.path.join(app.root_path, 'models', 'saved_model', 'tokenizer_target.json')
+    model_path = app.config["MODEL_PATH"]
+    tok_in_p  = app.config["TOKENIZER_INPUT_PATH"]
+    tok_targ  = app.config["TOKENIZER_TARGET_PATH"]
+
     try:
-        tokenizer_input  = load_tokenizer(tok_in_path)
-        tokenizer_target = load_tokenizer(tok_tar_path)
-        app.logger.info("Tokenizers loaded.")
+        summarization_model = tf.keras.models.load_model(model_path)
+        tokenizer_input     = load_tokenizer(tok_in_p)
+        tokenizer_target    = load_tokenizer(tok_targ)
+        app.logger.info("Model and tokenizers loaded.")
     except Exception as e:
-        app.logger.error("Failed to load tokenizers: %s", e)
-        tokenizer_input = tokenizer_target = None
+        app.logger.error("Failed loading model/tokenizers: %s", e)
+        summarization_model = tokenizer_input = tokenizer_target = None
 
-    # Store on config
-    app.config['SUMMARY_MODEL']   = summarization_model
-    app.config['TOK_INPUT']       = tokenizer_input
-    app.config['TOK_TARGET']      = tokenizer_target
+    app.config["SUMMARY_MODEL"] = summarization_model
+    app.config["TOK_INPUT"]     = tokenizer_input
+    app.config["TOK_TARGET"]    = tokenizer_target
 
-    # Register blueprint
+    #  ─── Register Blueprints ────────────────────────────────────────────
     from app.blueprints.notes import notes_bp
-    app.register_blueprint(notes_bp, url_prefix='/notes')
+    app.register_blueprint(notes_bp, url_prefix="/notes")
 
-    # Health check
-    @app.route('/health')
+    #  ─── Health Check ────────────────────────────────────────────────────
+    @app.route("/health")
     def health():
-        return jsonify(status='ok'), 200
+        return jsonify(status="ok"), 200
 
     return app

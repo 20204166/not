@@ -1,23 +1,45 @@
-
+version: '3.8'
 
 services:
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    image: "20204166/not_backend:latest"
+    image: 20204166/not_backend:latest
     ports:
       - "5000:5000"        # Expose Flask on host:5000
     volumes:
-      - .:/app             # Mount code for development
+      - .:/app             # Mount your entire code + models directory
     depends_on:
-      - redis              # Wait for Redis before starting
+      - redis
     environment:
+      # ─── Flask env & entrypoint ───────────────────────────────
       - FLASK_APP=run.py
       - FLASK_ENV=production
+
+      # ─── Redis (if you ever use it in your code) ──────────────
       - REDIS_URL=redis://redis:6379
+
+      # ─── Model & tokenizer paths ──────────────────────────────
+      #   These override the defaults in config.py
+      - MODEL_PATH=app/models/saved_model/summarization_model.keras
+      - TOKENIZER_INPUT_PATH=app/models/saved_model/tokenizer_input.json
+      - TOKENIZER_TARGET_PATH=app/models/saved_model/tokenizer_target.json
+      - TRAINING_DATA_FILE=app/models/data/text/training_data.json
+
+      # ─── Sequence-lengths & token indices ─────────────────────
+      - MAX_LENGTH_INPUT=50
+      - MAX_LENGTH_TARGET=20
+      - START_TOKEN_INDEX=1
+      - END_TOKEN_INDEX=2
+
+      # ─── (Optional) other flags from config.py ────────────────
+      # - FORCE_REBUILD_MODEL=true
+      # - USE_CPU_FOR_TRAINING=false
+      # - SECRET_KEY=super-secret-key
+      # - LOGGING_LEVEL=DEBUG
 
   redis:
     image: redis:6-alpine
     ports:
-      - "6379:6379"        # Expose Redis on host:6379
+      - "6379:6379"
