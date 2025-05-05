@@ -6,8 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        KAGGLE_USERNAME: ${"bekithembancube"}
-        KAGGLE_KEY:      ${"5279d9da3a72396b9d97a0cd6e8a58c6"}
+        KAGGLE_USERNAME: ${KAGGLE_USERNAME}
+        KAGGLE_KEY:      ${KAGGLE_KEY}
     image: 20204166/not_backend:latest
  
     ports:
@@ -20,6 +20,7 @@ services:
       # ─── Flask env & entrypoint ───────────────────────────────
       - FLASK_APP=run.py
       - FLASK_ENV=production
+      
 
       # ─── Redis (if you ever use it in your code) ──────────────
       - REDIS_URL=redis://redis:6379
