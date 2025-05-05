@@ -1,17 +1,17 @@
 # docker-compose.yml
 version: "3.9"
-
 services:
   backend:
-    build: .
-    container_name: ai-notes-backend
+    build:
+      context: .  # Build using the current directory context (Dockerfile is here)
+      dockerfile: Dockerfile
+    image: "20204166/not_backend:latest"  # Tag the image for consistency
     ports:
-      - "5000:5000"
-    environment:
-      FLASK_ENV: production
-      # Add any additional environment variables here.
-    depends_on:
-      - redis
+      - "5000:5000"   # Host port 5000 -> Container port 5000 (Flask/Gunicorn)
+    volumes:
+      - .:/app        # Mount code for development convenience (hot-reload capable)
+    # environment:
+    #   - FLASK_ENV=development   # (Optional) Uncomment to run in development mode
 
   redis:
     image: redis:6-alpine

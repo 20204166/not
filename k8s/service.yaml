@@ -4,11 +4,12 @@ metadata:
   name: ai-notes-backend
   namespace: ai-notes
 spec:
-  type: ClusterIP
+  type: LoadBalancer  # Use NodePort for on-prem clusters without a LoadBalancer
   selector:
     app: ai-notes-backend
   ports:
-  - port: 80
-    targetPort: 5000
-    protocol: TCP
+    - port: 5000
+      targetPort: 5000
+      protocol: TCP
+      name: http
 

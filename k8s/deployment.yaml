@@ -3,8 +3,10 @@ kind: Deployment
 metadata:
   name: ai-notes-backend
   namespace: ai-notes
+  labels:
+    app: ai-notes-backend
 spec:
-  replicas: 1
+  replicas: 1  # start with a single replica (can scale out later)
   selector:
     matchLabels:
       app: ai-notes-backend
@@ -15,7 +17,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image:  docker.io/20204166/not_backend:latest
+        image: "20204166/not_backend:latest"
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
@@ -24,10 +26,10 @@ spec:
             name: ai-notes-config
         resources:
           requests:
-            cpu:    "250m"
+            cpu: "250m"
             memory: "512Mi"
           limits:
-            cpu:    "500m"
+            cpu: "500m"
             memory: "1Gi"
         readinessProbe:
           httpGet:
