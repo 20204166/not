@@ -4,6 +4,8 @@ import os
 import tensorflow as tf
 from flask import Flask, jsonify
 
+# This line imports app/config.py and brings in your classes
+from app.config import Config, DevelopmentConfig, TestingConfig, ProductionConfig
 # bring in your Config classes
 from app.config import (
     Config,
