@@ -27,28 +27,28 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
  && rm -rf /root/.cache/pip
 
-# ---- 3) Single RUN: install Kaggle, auth, download & properly flatten unzip ----
-     RUN pip install --no-cache-dir kaggle \
-     && mkdir -p /root/.kaggle \
-     && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" \
-          > /root/.kaggle/kaggle.json \
-     && chmod 600 /root/.kaggle/kaggle.json \
-     \
-     && mkdir -p /app/models/saved_model \
-     && kaggle datasets download -d bekithembancube/saved-model \
-          -p /app/models/saved_model \
-     \
-     # unzip into the folder
-     && unzip /app/models/saved_model/saved_model.zip -d /app/models/saved_model \
-     && rm /app/models/saved_model/saved_model.zip \
-     \
-     # if the zip created its own 'saved_model/' subfolder, move its contents up
-     && if [ -d /app/models/saved_model/saved_model ]; then \
-          mv /app/models/saved_model/saved_model/* /app/models/saved_model/; \
-          rm -rf /app/models/saved_model/saved_model; \
-        fi
-    
-# ---- 4) Copy your application code ----
+# # ---- 3) Single RUN: install Kaggle, auth, download & flatten unzip ----
+RUN pip install --no-cache-dir kaggle \
+&& mkdir -p /root/.kaggle \
+&& printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" \
+     > /root/.kaggle/kaggle.json \
+&& chmod 600 /root/.kaggle/kaggle.json \
+\
+&& mkdir -p /app/models/saved_model \
+&& kaggle datasets download -d bekithembancube/saved-model \
+     -p /app/models/saved_model \
+\
+# unzip the correctly-named ZIP
+&& unzip /app/models/saved_model/saved-model.zip \
+     -d /app/models/saved_model \
+&& rm /app/models/saved_model/saved-model.zip \
+\
+# if it created a subdirectory "saved-model/", move its contents up one level
+&& if [ -d /app/models/saved_model/saved-model ]; then \
+     mv /app/models/saved_model/saved-model/* /app/models/saved_model/; \
+     rm -rf /app/models/saved_model/saved-model; \
+   fi
+
 COPY . /app
 
 # ---- 5) Flask & Gunicorn setup ----
