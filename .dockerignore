@@ -10,3 +10,4 @@ __pycache__/
 *.h5
 *.keras
 *.ipynb_checkpoints
+app/models/saved_model
