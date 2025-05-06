@@ -27,21 +27,16 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
  && rm -rf /root/.cache/pip
 
-# ---- 3) Single RUN: install Kaggle CLI, auth, download & unzip dataset ----
-# ---- 3) Single RUN: install Kaggle CLI, auth, create target dir, download & unzip ----
-  RUN pip install --no-cache-dir kaggle \
-  && mkdir -p /root/.kaggle \
-  && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" \
-       > /root/.kaggle/kaggle.json \
-  && chmod 600 /root/.kaggle/kaggle.json \
-  && mkdir -p /app/models/saved_model \
-  && kaggle datasets download -d bekithembancube/saved-model \
-       -p /app/models/saved_model \
-  && unzip /app/models/saved_model/saved-model.zip \
-       -d /app/models/saved_model \
-  && rm /app/models/saved_model/saved-model.zip
- 
-
+# ---- 3) Single RUN: install Kaggle CLI, auth, mkdir, download & unzip ----
+     RUN pip install --no-cache-dir kaggle \
+     && mkdir -p /root/.kaggle \
+     && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" > /root/.kaggle/kaggle.json \
+     && chmod 600 /root/.kaggle/kaggle.json \
+     \
+     && mkdir -p /app/models/saved_model \
+     && kaggle datasets download -d bekithembancube/saved-model -p /app/models/saved_model \
+     && unzip /app/models/saved_model/saved-model.zip -d /app/models/saved_model \
+     && rm /app/models/saved_model/saved-model.zip
 # ---- 4) Copy your application code ----
 COPY . /app
 
