@@ -9,18 +9,14 @@ def load_tokenizer(path: str):
 
 def create_app():
     app = Flask(__name__, instance_relative_config=False)
-
-    # ─── Load the right config class ───────────────────────────────────────
-    # FLASK_ENV should be one of 'development', 'testing', or 'production'
     env = os.environ.get("FLASK_ENV", "development").lower()
-    # Map to your class names: DevelopmentConfig, TestingConfig, ProductionConfig
-    config_class = {
+    config_mapping = {
         "development": "app.config.DevelopmentConfig",
         "testing":     "app.config.TestingConfig",
         "production":  "app.config.ProductionConfig",
-    }.get(env, "app.config.Config")
-    app.config.from_object(config_class)
-
+    }
+    config_path = config_mapping.get(env, "app.config.Config")
+    app.config.from_object(config_path)
     # ─── Bring numeric settings into config for the blueprint ─────────────
     app.config["MAX_LENGTH_INPUT"]  = int(app.config.get("MAX_LENGTH_INPUT", 50))
     app.config["MAX_LENGTH_TARGET"] = int(app.config.get("MAX_LENGTH_TARGET", 20))
