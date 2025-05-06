@@ -1,31 +1,36 @@
+# app/__init__.py
+
 import os
 import tensorflow as tf
 from flask import Flask, jsonify
 
 def load_tokenizer(path: str):
-    """Load a Keras tokenizer from a JSON file."""
+    """Load a Keras Tokenizer from a JSON file."""
     with open(path, "r", encoding="utf-8") as f:
         return tf.keras.preprocessing.text.tokenizer_from_json(f.read())
 
 def create_app():
+    # Create the Flask app
     app = Flask(__name__, instance_relative_config=False)
+
+    # ─── 1) Load the correct Config class from app/config.py ─────────────
     env = os.environ.get("FLASK_ENV", "development").lower()
-    config_mapping = {
+    cfg_map = {
         "development": "app.config.DevelopmentConfig",
         "testing":     "app.config.TestingConfig",
         "production":  "app.config.ProductionConfig",
     }
-    config_path = config_mapping.get(env, "app.config.Config")
+    config_path = cfg_map.get(env, "app.config.Config")
     app.config.from_object(config_path)
-    # ─── Bring numeric settings into config for the blueprint ─────────────
+
+    # ─── 2) Normalize numeric settings for your blueprint ────────────────
     app.config["MAX_LENGTH_INPUT"]  = int(app.config.get("MAX_LENGTH_INPUT", 50))
     app.config["MAX_LENGTH_TARGET"] = int(app.config.get("MAX_LENGTH_TARGET", 20))
     app.config["START_TOKEN_INDEX"] = int(app.config.get("START_TOKEN_INDEX", 1))
     app.config["END_TOKEN_INDEX"]   = int(app.config.get("END_TOKEN_INDEX", 2))
 
-    # ─── Load your model & tokenizers ──────────────────────────────────────
+    # ─── 3) Load your model & tokenizers into the app config ────────────
     try:
-        # Paths from your config.py
         model_path    = app.config["MODEL_PATH"]
         tok_in_path   = app.config["TOKENIZER_INPUT_PATH"]
         tok_targ_path = app.config["TOKENIZER_TARGET_PATH"]
@@ -50,14 +55,13 @@ def create_app():
     app.config["TOK_INPUT"]     = tokenizer_input
     app.config["TOK_TARGET"]    = tokenizer_target
 
-    # ─── Register Blueprints & Health ─────────────────────────────────────
+    # ─── 4) Register your Note‐processing Blueprint ──────────────────────
     from app.blueprints.notes import notes_bp
     app.register_blueprint(notes_bp, url_prefix="/notes")
 
+    # ─── 5) Health Check ─────────────────────────────────────────────────
     @app.route("/health")
     def health():
         return jsonify(status="ok"), 200
 
     return app
-
-# so run.py can do: from app import create_app; app = create_app()
