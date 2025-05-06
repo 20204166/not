@@ -18,15 +18,16 @@ RUN apt-get update \
       torchvision==0.20.1+cpu \
       --index-url https://download.pytorch.org/whl/cpu
 
-# 2) Install Python requirements
+# 2) Install Python requirements (fixed path)
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
  && rm -rf /root/.cache/pip
 
-# 3) Copy in your app code
-COPY . /app
+# 3) Copy in **just** your Flask app
+COPY app/ /app/app/
+COPY run.py /app/
 
-## 4) Install Kaggle CLI, authenticate, download & unpack model
+## 4) Install Kaggle CLI, authenticate, download & unpack model (UNCHANGED)
 ARG KAGGLE_USERNAME
 ARG KAGGLE_KEY
 
@@ -55,6 +56,7 @@ ENV FLASK_APP=run.py \
     FLASK_ENV=production
 
 EXPOSE 5000
+
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD curl --fail http://localhost:5000/health || exit 1
 
