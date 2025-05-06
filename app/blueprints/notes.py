@@ -1,62 +1,58 @@
-from flask import Blueprint, request, jsonify, current_app
-import os, numpy as np, speech_recognition as sr
-from tensorflow.keras.preprocessing.sequence import pad_sequences
+# run.py
 
-notes_bp = Blueprint("notes", __name__)
+import os
+import json
+import tensorflow as tf
+from flask import Flask, jsonify
+from tensorflow.keras.preprocessing.text import tokenizer_from_json
 
-@notes_bp.route("/process", methods=["POST"])
-def process_note():
-    # 1) Load the configured objects
-    model = current_app.config.get("SUMMARY_MODEL")
-    tok_in = current_app.config.get("TOK_INPUT")
-    tok_targ = current_app.config.get("TOK_TARGET")
-    max_in  = current_app.config.get("MAX_LENGTH_INPUT")
-    max_out = current_app.config.get("MAX_LENGTH_TARGET")
-    start_i = current_app.config.get("START_TOKEN_INDEX", 1)
-    end_i   = current_app.config.get("END_TOKEN_INDEX", 2)
+def load_tokenizer(path):
+    """Load a Keras tokenizer from a JSON file."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = f.read()
+    return tokenizer_from_json(data)
 
-    if not all([model, tok_in, tok_targ]):
-        return jsonify(error="Model or tokenizers not available"), 500
+def create_app():
+    app = Flask(__name__, instance_relative_config=False)
 
-    # 2) Accept either audio_file or text_input
-    if "audio_file" in request.files:
-        f = request.files["audio_file"]
-        tmp = os.path.join("tmp", f.filename)
-        os.makedirs("tmp", exist_ok=True)
-        f.save(tmp)
-        text = _speech_to_text(tmp)
-        os.remove(tmp)
-    else:
-        data = request.get_json(silent=True) or {}
-        text = data.get("text_input", "")
-        if not text:
-            return jsonify(error="No input provided"), 400
+    # 1) Load configuration
+    #    Pick the config class you want (DevelopmentConfig, ProductionConfig, etc.)
+    app.config.from_object("config.Config")
 
-    # 3) Run your greedy decoding loop
-    seq = tok_in.texts_to_sequences([text])
-    enc_in = pad_sequences(seq, maxlen=max_in, padding="post")
-    dec_seq = np.array([[start_i]])
-    result = []
+    # 2) Load the model
+    model_path = app.config["MODEL_PATH"]
+    app.logger.info(f"Loading summarization model from {model_path}...")
+    app.config["SUMMARY_MODEL"] = tf.keras.models.load_model(model_path)
 
-    for _ in range(max_out):
-        preds = model.predict([enc_in, dec_seq], verbose=0)
-        idx = np.argmax(preds[0, -1, :])
-        if idx == end_i:
-            break
-        word = tok_targ.index_word.get(idx, "")
-        if not word:
-            break
-        result.append(word)
-        dec_seq = np.concatenate([dec_seq, [[idx]]], axis=1)
+    # 3) Load tokenizers
+    ti_path = app.config["TOKENIZER_INPUT_PATH"]
+    tt_path = app.config["TOKENIZER_TARGET_PATH"]
+    app.logger.info(f"Loading input tokenizer from {ti_path}...")
+    app.config["TOK_INPUT"]   = load_tokenizer(ti_path)
+    app.logger.info(f"Loading target tokenizer from {tt_path}...")
+    app.config["TOK_TARGET"]  = load_tokenizer(tt_path)
 
-    return jsonify(transcription=text, summary=" ".join(result)), 200
+    # 4) Copy over any other numeric config the blueprint needs
+    app.config["MAX_LENGTH_INPUT"]  = app.config.get("MAX_LENGTH_INPUT", 50)
+    app.config["MAX_LENGTH_TARGET"] = app.config.get("MAX_LENGTH_TARGET", 20)
+    app.config["START_TOKEN_INDEX"] = app.config.get("START_TOKEN_INDEX", 1)
+    app.config["END_TOKEN_INDEX"]   = app.config.get("END_TOKEN_INDEX", 2)
 
-# reuse your old function
-def _speech_to_text(path):
-    recog = sr.Recognizer()
-    with sr.AudioFile(path) as src:
-        audio = recog.record(src)
-    try:
-        return recog.recognize_google(audio)
-    except:
-        return ""
+    # 5) Health check
+    @app.route("/health")
+    def health():
+        return jsonify(status="ok"), 200
+
+    # 6) Register your notes blueprint at /notes
+    from app.blueprints.notes import notes_bp
+    app.register_blueprint(notes_bp, url_prefix="/notes")
+
+    return app
+
+# Create the Flask app
+app = create_app()
+
+if __name__ == "__main__":
+    # For local dev / debugging
+    debug = app.config.get("DEBUG", False)
+    app.run(host="0.0.0.0", port=5000, debug=debug)
