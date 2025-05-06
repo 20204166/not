@@ -27,7 +27,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
  && rm -rf /root/.cache/pip
 
-# ---- 3) Single RUN: install Kaggle CLI, auth, mkdir & fetch the dataset ----
+# ---- 3) Single RUN: install Kaggle, auth, download & properly flatten unzip ----
      RUN pip install --no-cache-dir kaggle \
      && mkdir -p /root/.kaggle \
      && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" \
@@ -37,9 +37,17 @@ RUN pip install --no-cache-dir -r /app/requirements.txt \
      && mkdir -p /app/models/saved_model \
      && kaggle datasets download -d bekithembancube/saved-model \
           -p /app/models/saved_model \
-     && unzip /app/models/saved_model/saved_model.zip \
-          -d /app/models/saved_model \
-     && rm /app/models/saved_model/saved_model.zip
+     \
+     # unzip into the folder
+     && unzip /app/models/saved_model/saved_model.zip -d /app/models/saved_model \
+     && rm /app/models/saved_model/saved_model.zip \
+     \
+     # if the zip created its own 'saved_model/' subfolder, move its contents up
+     && if [ -d /app/models/saved_model/saved_model ]; then \
+          mv /app/models/saved_model/saved_model/* /app/models/saved_model/; \
+          rm -rf /app/models/saved_model/saved_model; \
+        fi
+    
 # ---- 4) Copy your application code ----
 COPY . /app
 
