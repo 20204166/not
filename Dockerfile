@@ -26,31 +26,28 @@ RUN pip install --no-cache-dir -r /app/requirements.txt \
 # 3) Copy in your app code
 COPY . /app
 
-# 4) Install Kaggle CLI, authenticate, download & unpack model
+## 4) Install Kaggle CLI, authenticate, download & unpack model
 ARG KAGGLE_USERNAME
 ARG KAGGLE_KEY
+
 RUN pip install --no-cache-dir kaggle \
  && mkdir -p /root/.kaggle \
  && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" \
-        > /root/.kaggle/kaggle.json \
+      > /root/.kaggle/kaggle.json \
  && chmod 600 /root/.kaggle/kaggle.json \
  \
  && mkdir -p /app/models/saved_model \
  && kaggle datasets download -d bekithembancube/saved-model \
-        -p /app/models/saved_model \
+      -p /app/models/saved_model \
+ \
+ && echo ">>> ABOUT TO UNZIP <<<" \
+ && ls -l /app/models/saved_model \
  \
  && unzip /app/models/saved_model/saved-model.zip \
-        -d /app/models/saved_model \
+      -d /app/models/saved_model \
  && rm /app/models/saved_model/saved-model.zip \
  \
- # if the ZIP unpack created a subfolder named "saved-model", flatten it
- && if [ -d /app/models/saved_model/saved-model ]; then \
-      mv /app/models/saved_model/saved-model/* /app/models/saved_model/; \
-      rm -rf /app/models/saved_model/saved-model; \
-    fi \
- \
- # **Debug step**: list the contents at build time so you see it in the logs
- && echo "--- /app/models/saved_model contents ---" \
+ && echo ">>> AFTER UNZIP <<<" \
  && ls -l /app/models/saved_model
 
 # 5) Flask/Gunicorn setup
