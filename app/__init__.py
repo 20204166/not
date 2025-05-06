@@ -32,7 +32,7 @@ def create_app():
     }.get(env, Config)
 
     # this actually applies the chosen class
-    app.config.from_object(config_cls)
+    app.config.from_object(cls)
 
     # ─── 2) normalize numeric settings for your blueprint ────────────────────
     app.config["MAX_LENGTH_INPUT"]  = int(app.config.get("MAX_LENGTH_INPUT", 50))
