@@ -28,7 +28,8 @@ def create_app():
         "testing":     TestingConfig,
         "production":  ProductionConfig,
     }.get(env, Config)
-    app.config.from_object(cls)
+    app.config.from_object('app.config.Config')
+
 
     # 3) Normalize a few numeric settings for your blueprint
     app.config["MAX_LENGTH_INPUT"]  = int(app.config.get("MAX_LENGTH_INPUT", 50))
