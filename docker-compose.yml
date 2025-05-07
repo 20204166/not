@@ -12,8 +12,7 @@ services:
  
     ports:
       - "5000:5000"        # Expose Flask on host:5000
-    sysctls:
-      vm.overcommit_memory: "1"
+
     depends_on:
       - redis
     command: python run.py
