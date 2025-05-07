@@ -14,7 +14,7 @@ def load_tokenizer(path: str):
 
 def create_app():
     # 2) Create Flask and load the base Config class
-    app = Flask(__name__, instance_relative_config=False)
+    app = Flask(__name__)
     app.config.from_object(Config)
 
     # 3) Normalize a few numeric settings (so they're ints, not strings)
