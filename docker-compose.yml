@@ -29,7 +29,7 @@ services:
       - MODEL_PATH=app/models/saved_model/summarization_model.keras
       - TOKENIZER_INPUT_PATH=app/models/saved_model/tokenizer_input.json
       - TOKENIZER_TARGET_PATH=app/models/saved_model/tokenizer_target.json
-      - TRAINING_DATA_FILE=app/models/data/text/training_data.json
+    
 
       # ─── Sequence-lengths & token indices ─────────────────────
       - MAX_LENGTH_INPUT=50

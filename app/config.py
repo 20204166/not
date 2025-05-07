@@ -52,12 +52,6 @@ class DevelopmentConfig(Config):
     Development configuration.
     """
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DEV_DATABASE_URI",
-        "sqlite:///dev_app.db"
-    )
-    LOGGING_LEVEL = os.environ.get("DEV_LOGGING_LEVEL", "DEBUG")
-    EXTERNAL_API_KEY = os.environ.get("DEV_EXTERNAL_API_KEY", "")
 
 
 class TestingConfig(Config):
@@ -65,12 +59,6 @@ class TestingConfig(Config):
     Testing configuration.
     """
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "TEST_DATABASE_URI",
-        "sqlite:///:memory:"
-    )
-    LOGGING_LEVEL = os.environ.get("TEST_LOGGING_LEVEL", "DEBUG")
-    EXTERNAL_API_KEY = os.environ.get("TEST_EXTERNAL_API_KEY", "")
 
 
 class ProductionConfig(Config):
@@ -78,9 +66,3 @@ class ProductionConfig(Config):
     Production configuration.
     """
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URI",
-        "postgresql://user:password@hostname/dbname"
-    )
-    LOGGING_LEVEL = os.environ.get("LOGGING_LEVEL", "WARNING")
-    EXTERNAL_API_KEY = os.environ.get("EXTERNAL_API_KEY", "")
