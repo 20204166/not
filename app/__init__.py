@@ -1,6 +1,7 @@
 # app/__init__.py
 
 import tensorflow as tf
+import os 
 from flask import Flask, jsonify
 from app.config import Config
 
