@@ -16,6 +16,10 @@ def create_app():
     app.config.from_object(cfg_path)
 
     # load model + tokenizers
+        # ─── Tell your blueprint how long to pad/truncate for inference ───────────
+    app.config["MAX_LENGTH_INPUT"]  = int(app.config.get("MAX_LENGTH_INPUT", 50))
+    app.config["MAX_LENGTH_TARGET"] = int(app.config.get("MAX_LENGTH_TARGET", 20))
+
     model_path  = app.config["MODEL_PATH"]
     tok_in_path = app.config["TOKENIZER_INPUT_PATH"]
     tok_out_path= app.config["TOKENIZER_TARGET_PATH"]
