@@ -35,8 +35,7 @@ services:
       # ─── Sequence-lengths & token indices ─────────────────────
       - MAX_LENGTH_INPUT=50
       - MAX_LENGTH_TARGET=20
-      - START_TOKEN_INDEX=1
-      - END_TOKEN_INDEX=2
+      
 
       # ─── (Optional) other flags from config.py ────────────────
       # - FORCE_REBUILD_MODEL=true
