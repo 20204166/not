@@ -12,8 +12,8 @@ def process_note():
     tok_targ= current_app.config.get("TOK_TARGET")
     max_in  = int(current_app.config.get("MAX_LENGTH_INPUT",  50))
     max_out = int(current_app.config.get("MAX_LENGTH_TARGET", 20))
-    start_i = tok_targ.word_index["<start>"]
-    end_i   = tok_targ.word_index["<end>"]
+    start_i = current_app.config["START_TOKEN_INDEX"]
+    end_i   = current_app.config["END_TOKEN_INDEX"]
 
 
     if not all([model, tok_in, tok_targ]):

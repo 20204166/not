@@ -42,10 +42,7 @@ class Config:
     MAX_LENGTH_INPUT = int(os.environ.get("MAX_LENGTH_INPUT", 50))
     MAX_LENGTH_TARGET = int(os.environ.get("MAX_LENGTH_TARGET", 20))
 
-    # Special token indices (must match tokenizer configuration)
-    START_TOKEN_INDEX = int(os.environ.get("START_TOKEN_INDEX", 1))
-    END_TOKEN_INDEX   = int(os.environ.get("END_TOKEN_INDEX", 2))
-
+    
 
 class DevelopmentConfig(Config):
     """
