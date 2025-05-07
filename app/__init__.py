@@ -14,6 +14,11 @@ def create_app():
     # load your base config class
     cfg_path = os.environ.get("APP_CONFIG", "app.config.Config")
     app.config.from_object(cfg_path)
+    
+    app.logger.debug("CONFIG START_TOKEN_INDEX=%r END_TOKEN_INDEX=%r",
+                 app.config.get("START_TOKEN_INDEX"),
+                 app.config.get("END_TOKEN_INDEX"))
+
 
     # load model + tokenizers
     model_path  = app.config["MODEL_PATH"]
