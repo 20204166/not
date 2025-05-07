@@ -6,7 +6,7 @@ class Config:
     Contains default settings and environment variables for all environments.
     """
     # Flask settings
-    DEBUG = False
+    DEBUG = True
     TESTING = False
     SECRET_KEY = os.environ.get("SECRET_KEY", "default-secret-key")
 
