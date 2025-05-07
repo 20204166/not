@@ -53,3 +53,20 @@ def process_note():
     summary_text = out[0]["summary_text"]
     
     return jsonify(transcription=text, summary=summary_text), 200
+
+
+@notes_bp.route("/evaluate", methods=["POST"])
+def evaluate_summary():
+    data = request.get_json() or {}
+    summary  = data.get("summary", "")
+    original = data.get("original", "")
+    if not summary or not original:
+        return jsonify(error="Must provide both summary and original text"), 400
+
+    # TODO: replace with your actual evaluation logic
+    results = {
+      "rouge1": 0.42,
+      "rouge2": 0.17,
+      "bert_score": 0.88
+    }
+    return jsonify(results), 200
