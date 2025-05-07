@@ -13,7 +13,7 @@ def process_note():
     max_in  = current_app.config.get("MAX_LENGTH_INPUT", 50)
     max_out = current_app.config.get("MAX_LENGTH_TARGET", 20)
     start_i = current_app.config.get("START_TOKEN_INDEX", 1)
-    end_i   = current_app.config.get("END_TOKEN_INDEX", 2)
+    end_i   = current_app.config.get("END_TOKEN_INDEX",   2)
 
     if not all([model, tok_in, tok_targ]):
         return jsonify(error="Model or tokenizers not loaded"), 500
