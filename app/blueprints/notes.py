@@ -6,7 +6,7 @@ notes_bp = Blueprint("notes", __name__)
 
 @notes_bp.route("/process", methods=["POST"])
 def process_note():
-    # 1) grab everything from config
+    # 1) grab everything from config, with defaults
     model   = current_app.config.get("SUMMARY_MODEL")
     tok_in  = current_app.config.get("TOK_INPUT")
     tok_targ= current_app.config.get("TOK_TARGET")
@@ -18,48 +18,41 @@ def process_note():
     if not all([model, tok_in, tok_targ]):
         return jsonify(error="Model or tokenizers not loaded"), 500
 
-    # 2) get text
+    # 2) pull text out
     data = request.get_json(silent=True) or {}
     text = data.get("text_input", "").strip()
     if not text:
         return jsonify(error="No input provided"), 400
 
-    # 3) tokenize & pad the encoder input
+    # 3) tokenize and pad encoder input
     seqs = tok_in.texts_to_sequences([text])
-    # if you get back an empty list or None, force it to your OOV index (usually 1)
-    if not seqs or seqs[0] is None or len(seqs[0]) == 0:
-        oov = getattr(tok_in, "oov_token", None)
-        seqs = [[ tok_in.word_index.get(oov, 1) ]]
+    # if empty or None, fallback to the OOV index
+    if not seqs or not seqs[0]:
+        oov_idx = tok_in.word_index.get(tok_in.oov_token, 1)
+        seqs = [[oov_idx]]
 
     enc_in = pad_sequences(
         seqs,
         maxlen=max_in,
         padding="post",
-        dtype="int32"        # <–– force numeric dtype
+        dtype="int32"      # force numeric dtype
     )
 
-    # 4) initialize the decoder
+    # 4) initialize decoder sequence
     dec_seq = np.array([[start_i]], dtype="int32")
 
-    # 5) greedy decode loop
+    # 5) greedy decode
     result = []
     for _ in range(max_out):
-        try:
-            preds = model.predict([enc_in, dec_seq], verbose=0)
-        except Exception as e:
-            current_app.logger.error("Prediction failed: %s", e)
-            return jsonify(error="Prediction error", details=str(e)), 500
-
-        idx = int(np.argmax(preds[0, -1, :]))
+        preds = model.predict([enc_in, dec_seq], verbose=0)
+        idx   = int(np.argmax(preds[0, -1, :]))
         if idx == end_i:
             break
-
         word = tok_targ.index_word.get(idx, "")
         if not word:
             break
-
         result.append(word)
-        # append to decoder input & re-cast to int32
+        # append next token and keep dtype int32
         dec_seq = np.concatenate([dec_seq, [[idx]]], axis=1).astype("int32")
 
     return jsonify(transcription=text, summary=" ".join(result)), 200
