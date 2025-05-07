@@ -13,7 +13,9 @@ def create_app():
     app = Flask(__name__, instance_relative_config=False)
     
     # 2) Always load the base Config class (DEBUG=False, TESTING=False)
-    app.config.from_object(Config)
+    cfg = os.environ.get("APP_CONFIG",
+            f"app.config.{env.title()}Config")
+    app.config.from_object(cfg)
 
     # 3) Normalize any numeric settings your blueprint needs
     app.config["MAX_LENGTH_INPUT"]  = int(app.config.get("MAX_LENGTH_INPUT", 50))

@@ -18,7 +18,7 @@ services:
     environment:
       # ─── Flask env & entrypoint ───────────────────────────────
       - FLASK_APP=run.py
-      - FLASK_ENV=none
+      - APP_CONFIG=app.config.Config
       
 
       # ─── Redis (if you ever use it in your code) ──────────────
