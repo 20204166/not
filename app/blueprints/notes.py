@@ -37,17 +37,19 @@ def process_note():
     dec_seq = np.array([[start_i]], dtype="int32")
     result  = []
 
-    # 5) greedy decode
-    for _ in range(max_out):
-        preds = model.predict([enc_in, dec_seq], verbose=0)
-        idx   = int(np.argmax(preds[0, -1, :]))
-        if idx == end_i:
-            break
-        word = tok_targ.index_word.get(idx, "")
-        if not word:
-            break
-        result.append(word)
-        # append predicted token and keep dtype
-        dec_seq = np.concatenate([dec_seq, [[idx]]], axis=1).astype("int32")
-
-    return jsonify(transcription=text, summary=" ".join(result)), 200
+    
+    # 5) Summarize via the HF pipeline you registered on startup
+    summarizer = current_app.config.get("SUMMARIZER")
+    if summarizer is None:
+       return jsonify(error="No summarizer available"), 500
+    # call the pipeline, respecting your max length
+    out = summarizer(
+        text,
+        max_length=max_out,
+        min_length=5,
+        do_sample=False
+    )
+    # pipeline returns [{"summary_text": "..."}]
+    summary_text = out[0]["summary_text"]
+    
+    return jsonify(transcription=text, summary=summary_text), 200

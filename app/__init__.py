@@ -27,6 +27,17 @@ def create_app():
     summarization_model = tf.keras.models.load_model(model_path)
     tok_input     = load_tokenizer(tok_in_path)
     tok_target    = load_tokenizer(tok_out_path)
+    # ─── Build a Hugging-Face summarization pipeline ─────────────────────────
+    from transformers import pipeline
+    summarizer = pipeline(
+        "summarization",
+        model=summarization_model,
+        tokenizer=tok_input,
+        framework="tf",
+        device=-1            # CPU only
+    )
+    app.config["SUMMARIZER"] = summarizer
+
 
 
     # in process_note()
