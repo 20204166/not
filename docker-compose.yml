@@ -20,7 +20,7 @@ services:
       # ─── Flask env & entrypoint ───────────────────────────────
       - FLASK_ENV=development
       - FLASK_DEBUG=1
-      #- APP_CONFIG=app.config.Config
+      - APP_CONFIG=app.config.Config
       
 
       # ─── Redis (if you ever use it in your code) ──────────────
