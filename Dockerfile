@@ -37,19 +37,19 @@ RUN pip install --no-cache-dir kaggle \
       > /root/.kaggle/kaggle.json \
  && chmod 600 /root/.kaggle/kaggle.json \
  \
- && mkdir -p /app/models/saved_model \
+ && mkdir -p /app/app/models/saved_model \
  && kaggle datasets download -d bekithembancube/saved-model \
       -p /app/models/saved_model \
  \
  && echo ">>> ABOUT TO UNZIP <<<" \
- && ls -l /app/models/saved_model \
+ && ls -l /app/app/models/saved_model \
  \
- && unzip /app/models/saved_model/saved-model.zip \
-      -d /app/models/saved_model \
- && rm /app/models/saved_model/saved-model.zip \
+ && unzip /app/app/models/saved_model/saved-model.zip \
+      -d /app/app/models/saved_model \
+ && rm /app/app/models/saved_model/saved-model.zip \
  \
  && echo ">>> AFTER UNZIP <<<" \
- && ls -l /app/models/saved_model
+ && ls -l /app/app/models/saved_model
 
 # 5) Flask/Gunicorn setup
 ENV FLASK_APP=run.py \
