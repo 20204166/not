@@ -23,37 +23,41 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt \
  && rm -rf /root/.cache/pip
 
-# 3) Copy in **just** your Flask app
+# 3) Copy in just your Flask app code
 COPY app/ /app/app/
 COPY run.py /app/
 
-## 4) Install Kaggle CLI, authenticate, download & unpack model (UNCHANGED)
+# 4) Install Kaggle CLI, authenticate, download & unpack model
 ARG KAGGLE_USERNAME
 ARG KAGGLE_KEY
 
 RUN pip install --no-cache-dir kaggle \
- && mkdir -p /root/.kaggle \
- && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" \
-      > /root/.kaggle/kaggle.json \
- && chmod 600 /root/.kaggle/kaggle.json \
- \
- && mkdir -p /app/app/models/saved_model \
- && kaggle datasets download -d bekithembancube/saved-model \
-      -p /app/models/saved_model \
- \
- && echo ">>> ABOUT TO UNZIP <<<" \
- && ls -l /app/app/models/saved_model \
- \
- && unzip /app/app/models/saved_model/saved-model.zip \
-      -d /app/app/models/saved_model \
- && rm /app/app/models/saved_model/saved-model.zip \
- \
- && echo ">>> AFTER UNZIP <<<" \
- && ls -l /app/app/models/saved_model
+    && mkdir -p /root/.kaggle \
+    && printf '{"username":"%s","key":"%s"}' "$KAGGLE_USERNAME" "$KAGGLE_KEY" \
+         > /root/.kaggle/kaggle.json \
+    && chmod 600 /root/.kaggle/kaggle.json \
+    \
+    # create the exact folder your Flask config points to
+    && mkdir -p /app/app/models/saved_model \
+    \
+    # download the zip right into that folder
+    && kaggle datasets download -d bekithembancube/saved-model \
+         -p /app/app/models/saved_model \
+    \
+    && echo ">>> ABOUT TO UNZIP <<<" \
+    && ls -l /app/app/models/saved_model \
+    \
+    # unpack in-place & clean up
+    && unzip /app/app/models/saved_model/saved-model.zip \
+         -d /app/app/models/saved_model \
+    && rm /app/app/models/saved_model/saved-model.zip \
+    \
+    && echo ">>> AFTER UNZIP <<<" \
+    && ls -l /app/app/models/saved_model
 
 # 5) Flask/Gunicorn setup
 ENV FLASK_APP=run.py \
-    FLASK_ENV=production
+APP_CONFIG=app.config.Config
 
 EXPOSE 5000
 
