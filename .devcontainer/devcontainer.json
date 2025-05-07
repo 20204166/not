@@ -1,0 +1,32 @@
+// .devcontainer/devcontainer.json
+{
+    "name": "AI Note App",
+  
+    // if you're using docker-compose to bring up both Redis & your backend
+    "dockerComposeFile": ["../docker-compose.yml"],
+    "service": "backend",
+  
+    // (or if you only want the single Dockerfile approach, comment out the two lines above
+    //  and uncomment the next two instead)
+    // "dockerFile": "../Dockerfile",
+    // "context": "..",
+  
+    "workspaceFolder": "/workspaces/not",
+  
+    // forward container ports back to the host
+    "forwardPorts": [5000, 6379],
+  
+    "customizations": {
+      "vscode": {
+        // point VS Code’s Python extension at the in-container interpreter
+        "settings": {
+          "python.defaultInterpreterPath": "/usr/local/bin/python"
+        },
+        "extensions": [
+          "ms-python.python",
+          "ms-vscode-remote.remote-containers"
+        ]
+      }
+    }
+  }
+  
