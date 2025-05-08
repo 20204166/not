@@ -81,7 +81,7 @@ def save_combined_data(output_file: str):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(parts, f, ensure_ascii=False, indent=2)
-    print(f"\n🎉 Combined training data written to {output_file}")
+    print(f"\n Combined training data written to {output_file}")
 
 if __name__ == "__main__":
     save_combined_data("app/models/data/text/training_data.json")
