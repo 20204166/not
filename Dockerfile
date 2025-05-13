@@ -1,5 +1,11 @@
 # Use a slim Python 3.10 base image
-FROM python:3.10-slim-bookworm
+FROM python:3.11-slim AS builder
+
+FROM python:3.11-slim
+WORKDIR /app
+# bring in installed packages from builder
+COPY --from=builder /root/.local /root/.local
+ENV PATH=/root/.local/bin:$PATH
 
 # Don’t generate .pyc files and enable unbuffered logging
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -55,6 +61,7 @@ RUN pip install --no-cache-dir kaggle \
     && echo ">>> AFTER UNZIP <<<" \
     && ls -l /app/app/models/saved_model
 
+
 # 5) Flask/Gunicorn setup
 ENV FLASK_APP=run.py \
 APP_CONFIG=app.config.Config
@@ -64,4 +71,4 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD curl --fail http://localhost:5000/health || exit 1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app", "--workers", "4"]

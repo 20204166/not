@@ -1,71 +1,82 @@
-from flask import Blueprint, request, jsonify, current_app
-import numpy as np
+from flask import Blueprint, request, jsonify, current_app, abort
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 notes_bp = Blueprint("notes", __name__)
 
-@notes_bp.route("/process", methods=["POST"])
-def process_note():
-    # 1) grab everything from config
-    model    = current_app.config["SUMMARY_MODEL"]
-    tok_in   = current_app.config["TOK_INPUT"]
-    tok_targ = current_app.config["TOK_TARGET"]
-    max_in   = current_app.config["MAX_LENGTH_INPUT"]
-    max_out  = current_app.config["MAX_LENGTH_TARGET"]
-    start_i  = current_app.config["START_TOKEN_INDEX"]
-    end_i    = current_app.config["END_TOKEN_INDEX"]
 
-    if not all([model, tok_in, tok_targ]):
-        return jsonify(error="Model or tokenizers not loaded"), 500
+def get_summarizer():
+    """Retrieve the HF summarization pipeline from app config."""
+    summarizer = current_app.config.get("SUMMARIZER")
+    if not summarizer:
+        current_app.logger.error("Summarizer not configured")
+        abort(500, "Summarizer unavailable")
+    return summarizer
 
-    # 2) pull text out
+
+def extract_text():
+    """Parse and validate incoming JSON for the `/process` endpoint."""
     data = request.get_json(silent=True) or {}
     text = data.get("text_input", "").strip()
     if not text:
-        return jsonify(error="No input provided"), 400
+        abort(400, "No input provided")
+    return text
 
-    # 3) tokenize and (always) pad encoder input
-    seqs = tok_in.texts_to_sequences([text])
-    # if the sequence is empty, force it to at least one OOV token
-    if not seqs or not seqs[0]:
-        oov_idx = tok_in.word_index.get(tok_in.oov_token, 1)
-        seqs = [[oov_idx]]
 
-    enc_in  = pad_sequences(seqs, maxlen=max_in, padding="post", dtype="int32")
+def summarize_text(text: str) -> str:
+    """Run the HF pipeline and return the generated summary."""
+    pipe = get_summarizer()
+    try:
+        out = pipe(
+            text,
+            max_length=current_app.config["MAX_LENGTH_TARGET"],
+            min_length=int(current_app.config.get("MIN_LENGTH_TARGET", 5)),
+            do_sample=False
+        )
+        return out[0].get("summary_text", "")
+    except Exception as e:
+        current_app.logger.error(f"Summarization error: {e}")
+        abort(500, "Error during summarization")
 
-    # 4) initialize decoder sequence (start token) and result buffer
-    dec_seq = np.array([[start_i]], dtype="int32")
-    result  = []
 
-    
-    # 5) Summarize via the HF pipeline you registered on startup
-    summarizer = current_app.config.get("SUMMARIZER")
-    if summarizer is None:
-       return jsonify(error="No summarizer available"), 500
-    # call the pipeline, respecting your max length
-    out = summarizer(
-        text,
-        max_length=max_out,
-        min_length=5,
-        do_sample=False
-    )
-    # pipeline returns [{"summary_text": "..."}]
-    summary_text = out[0]["summary_text"]
-    
-    return jsonify(transcription=text, summary=summary_text), 200
+@notes_bp.route("/process", methods=["POST"])
+def process_note():
+    """
+    1) Extract and validate input text.
+    2) Summarize via HF pipeline.
+    3) Return a consistent JSON envelope.
+    """
+    text = extract_text()
+    summary = summarize_text(text)
+    return jsonify({
+        "status": "success",
+        "data": {
+            "transcription": text,
+            "summary": summary
+        }
+    }), 200
+
 
 @notes_bp.route("/evaluate", methods=["POST"])
 def evaluate_summary():
-    data     = request.get_json() or {}
-    summary  = data.get("summary", "")
-    original = data.get("original", "")
+    """
+    1) Parse and validate both `summary` and `original`.
+    2) (Stub) compute metrics.
+    3) Return them in the same envelope style.
+    """
+    data = request.get_json(silent=True) or {}
+    summary = data.get("summary", "").strip()
+    original = data.get("original", "").strip()
     if not summary or not original:
-        return jsonify(error="Must provide both summary and original text"), 400
+        abort(400, "Both summary and original are required")
 
-    # ← replace this stub with real metrics when you’re ready
+    # TODO: replace with real metric calculations (e.g., rouge, bert-score)
     results = {
-      "rouge1":    0.42,
-      "rouge2":    0.17,
-      "bert_score": 0.88
+        "rouge1":    0.42,
+        "rouge2":    0.17,
+        "bert_score": 0.88
     }
-    return jsonify(results), 200
+
+    return jsonify({
+        "status": "success",
+        "data": results
+    }), 200

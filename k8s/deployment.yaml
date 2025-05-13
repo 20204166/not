@@ -21,6 +21,11 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
         envFrom:
         - configMapRef:
             name: ai-notes-config
