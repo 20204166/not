@@ -47,22 +47,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 1) Bring in Python packages from builder
+# Bring in Python packages from builder
 COPY --from=builder /root/.local /root/.local
 
-# 2) Bring in your app code from builder
+# Bring in your app code from builder
 COPY --from=builder /app /app
 
-# 3) Set PATH and Flask-specific env vars
+# Set PATH and Flask-specific env vars
 ENV PATH=/root/.local/bin:$PATH \
     FLASK_APP=run.py \
     APP_CONFIG=app.config.Config
 
 EXPOSE 5000
 
-# 4) Healthcheck against your /healthz endpoint
+# Healthcheck against your existing /health or /healthz endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD curl --fail http://localhost:5000/healthz || exit 1
 
-# 5) Run under Gunicorn with 4 workers
+# Run under Gunicorn with 4 workers
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app", "--workers", "4"]
