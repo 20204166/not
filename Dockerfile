@@ -59,9 +59,9 @@ RUN pip install --no-cache-dir kaggle \
 ENV FLASK_APP=run.py \
 APP_CONFIG=app.config.Config
 
-EXPOSE 5000
+EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD curl --fail http://localhost:5000/health || exit 1
+  CMD curl --fail http://localhost:3000/health || exit 1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "run:app", "--workers", "4"]
+CMD ["gunicorn", "--bind", "0.0.0.0:3000", "run:app", "--workers", "4"]
