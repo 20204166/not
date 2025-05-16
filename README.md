@@ -1,8 +1,8 @@
 # AI Note-Taking App
 
 ## Overview
-
-The AI Note-Taking App is an intelligent application designed to enhance productivity by leveraging state-of-the-art artificial intelligence techniques. It utilizes natural language processing (NLP) and machine learning (ML) to automatically transcribe spoken words, generate concise summaries, and extract key insights from unstructured data. The app is intended for both personal and enterprise use, enabling users to focus on critical tasks rather than manual note entry.
+Im Bekithemba ncube and my dessertation implementation.
+AI Note-Taking App is an intelligent application designed to enhance productivity by leveraging state-of-the-art artificial intelligence techniques. It utilizes natural language processing (NLP) and machine learning (ML) to automatically transcribe spoken words, generate concise summaries, and extract key insights from unstructured data. The app is intended for both personal and enterprise use, enabling users to focus on critical tasks rather than manual note entry.
 
 ## Features
 
