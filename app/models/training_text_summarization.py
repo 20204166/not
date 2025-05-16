@@ -3,20 +3,27 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 import tensorflow as tf
 
-# 1) Discover and configure GPUs before any TF ops
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        print("Enabled memory growth on GPUs:", gpus)
-    except RuntimeError as e:
-        print("Error setting GPU memory growth:", e)
-else:
-    print("No GPUs found; using CPU.")
+from tensorflow.keras.mixed_precision import Policy, set_global_policy
+set_global_policy(Policy("mixed_float16"))
 
-# 2) Enable XLA now that memory growth is set
-tf.config.optimizer.set_jit(True)
+
+
+gpus = tf.config.list_physical_devices("GPU")
+if gpus:
+    for gpu in gpus:
+        # first try the “stable” API…
+        try:
+            tf.config.set_memory_growth(gpu, True)
+        except AttributeError:
+            # fallback to the experimental API in older TF versions
+            tf.config.experimental.set_memory_growth(gpu, True)
+
+    # make sure TensorFlow only “sees” those real GPUs
+    tf.config.set_visible_devices(gpus, "GPU")
+
+print("Physical GPUs:", gpus)
+print("Logical GPUs:", tf.config.list_logical_devices("GPU"))
+
 
 # 3) Safe to do other TF operations
 print("TensorFlow version:", tf.__version__)
@@ -31,12 +38,19 @@ from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Input, Embedding, Dense, Concatenate, Attention, LSTMCell
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
+from tensorflow.keras.callbacks import EarlyStopping, Callback
 from tensorflow.keras.optimizers import Adam
-
+from tensorflow.keras.utils import plot_model 
+from tensorflow.keras.optimizers.schedules import ExponentialDecay  
+from rouge_score import rouge_scorer
+import psutil
+import subprocess
 import json
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+
 
 max_length_input = 50
 max_length_target = 20
@@ -57,8 +71,11 @@ def load_training_data(data_path: str):
     targets = [f"<start> {t} <end>" for t in targets]
     return inputs, targets
 
-def create_tokenizer(texts, oov_token="<OOV>"):
-    tok = Tokenizer(oov_token=oov_token)
+MAX_VOCAB = 10_000
+def create_tokenizer(texts, oov_token="<OOV>", max_words=MAX_VOCAB, add_special_tokens=True):
+    tok = Tokenizer(num_words=max_words, oov_token=oov_token)
+    if add_special_tokens:
+        texts = [f"<start> {t} <end>" for t in texts]
     tok.fit_on_texts(texts)
     return tok
 
@@ -66,9 +83,12 @@ def load_tokenizer(path: str):
     with open(path, 'r', encoding='utf-8') as f:
         return tf.keras.preprocessing.text.tokenizer_from_json(f.read())
 
-def preprocess_texts(texts, tokenizer, max_length):
+def preprocess_texts(texts, tokenizer, max_length, max_vocab):
     sequences = tokenizer.texts_to_sequences(texts)
-    return pad_sequences(sequences, maxlen=max_length, padding='post')
+    arr = pad_sequences(sequences, maxlen=max_length, padding='post',truncating='post')
+    arr = np.where(arr >= max_vocab, 1, arr)
+    return arr
+
 
 def prepare_decoder_sequences(sequences):
     dec_in = sequences[:, :-1]
@@ -101,101 +121,475 @@ def build_seq2seq_model(vocab_in, vocab_tgt, emb_dim, max_in, max_tgt):
 
     attn = Attention(name="attn_layer")([dec_out2, enc_outs])
     concat = Concatenate(name="concat_layer")([attn, dec_out2])
-    outputs = Dense(vocab_tgt, activation='softmax', name="decoder_dense")(concat)
+    outputs = Dense(vocab_tgt, activation='softmax', name="decoder_dense", dtype='float32')(concat)
 
     model = Model([enc_inputs, dec_inputs], outputs)
-    lr_sched = tf.keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=0.0005,
-        decay_steps=20000,
-        decay_rate=0.98,
-        staircase=True
-    )
-    model.compile(Adam(lr_sched), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+   
     return model
+    
+def plot_history(history, save_dir):
+    h = history.history
+    keys = h.keys()
+    epochs = range(1, len(h.get("loss", [])) + 1)
 
-def plot_history(hist, save_dir):
-    epochs = range(1, len(hist.history['loss']) + 1)
-    plt.figure(figsize=(12, 5))
-    plt.plot(epochs, hist.history['loss'], 'bo-', label='Loss')
-    plt.plot(epochs, hist.history['accuracy'], 'go-', label='Accuracy')
-    plt.title('Training Metrics')
-    plt.xlabel('Epochs')
+    # 1) Loss
+    plt.figure()
+    plt.plot(epochs, h["loss"],     label="Train loss")
+    plt.plot(epochs, h["val_loss"], label="Val loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training vs. Validation Loss")
     plt.legend()
-    out_path = os.path.join(save_dir, "training_progress.png")
-    plt.savefig(out_path)
-    print(f"Saved plot to {out_path}")
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "loss_full.png"))
+    plt.close()
+
+    # 2) Accuracy
+    acc_key     = "token_accuracy" if "token_accuracy" in keys else "sparse_categorical_accuracy"
+    val_acc_key = "val_" + acc_key
+
+    plt.figure()
+    plt.plot(epochs, h[acc_key],     label="Train acc")
+    plt.plot(epochs, h[val_acc_key], label="Val acc")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.title("Training vs. Validation Accuracy")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, "acc_full.png"))
+    plt.close()
+
+
+
+class SnapshotCallback(Callback):
+    def __init__(self, save_dir, interval_epochs=10):
+        super().__init__()
+        self.save_dir = save_dir
+        self.interval = interval_epochs
+        os.makedirs(self.save_dir, exist_ok=True)
+        self.cpu_usage = []
+        self.ram_usage = []
+        self.gpu_usage = {}
+
+    def _get_gpu_utils(self):
+        try:
+            raw = subprocess.check_output([
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits"
+            ])
+            return [float(l) for l in raw.decode().splitlines() if l.strip()]
+        except Exception:
+            return []
+
+    def _plot_metrics(self, upto, suffix):
+        h = self.model.history.history
+        upto = min(upto, len(h["loss"]))
+        epochs = range(1, upto + 1)
+
+        # 1) Loss
+        plt.figure()
+        plt.plot(epochs, h["loss"][:upto],     label="Train loss")
+        plt.plot(epochs, h["val_loss"][:upto], label="Val loss")
+        plt.xlabel("Epoch"); plt.ylabel("Loss")
+        plt.title(f"Loss (1–{upto})"); plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.save_dir, f"loss_1to{upto}{suffix}.png"))
+        plt.close()
+
+        # 2) Token‐accuracy (your real metric)
+        plt.figure()
+        plt.plot(epochs, h["token_accuracy"][:upto],     label="Train token-acc")
+        plt.plot(epochs, h["val_token_accuracy"][:upto], label="Val token-acc")
+        plt.xlabel("Epoch"); plt.ylabel("Token Accuracy")
+        plt.title(f"Token Accuracy (1–{upto})"); plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.save_dir, f"token_acc_1to{upto}{suffix}.png"))
+        plt.close()
+
+        # 3) ROUGE
+        if "val_rouge1" in h:
+            plt.figure()
+            plt.plot(epochs, h["val_rouge1"][:upto], label="ROUGE-1")
+            plt.plot(epochs, h["val_rouge2"][:upto], label="ROUGE-2")
+            plt.plot(epochs, h["val_rougeL"][:upto], label="ROUGE-L")
+            plt.xlabel("Epoch"); plt.ylabel("F1 Score")
+            plt.title(f"ROUGE (1–{upto})"); plt.legend()
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.save_dir, f"rouge_1to{upto}{suffix}.png"))
+            plt.close()
+
+
+
+    def _plot_resources(self, upto, suffix):
+        epochs = range(1, upto + 1)
+
+        # CPU & RAM
+        plt.figure()
+        plt.plot(epochs, self.cpu_usage[:upto], label="CPU %")
+        plt.plot(epochs, self.ram_usage[:upto], label="RAM %")
+        plt.xlabel("Epoch"); plt.ylabel("Percent")
+        plt.title(f"CPU & RAM (1–{upto})"); plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.save_dir, f"cpu_ram_1to{upto}{suffix}.png"))
+        plt.close()
+
+        # Per-GPU
+        for i, util in self.gpu_usage.items():
+            plt.figure()
+            plt.plot(epochs, util[:upto], label=f"GPU{i} %")
+            plt.xlabel("Epoch"); plt.ylabel("GPU Util %")
+            plt.title(f"GPU {i} (1–{upto})"); plt.legend()
+            plt.tight_layout()
+            plt.savefig(os.path.join(self.save_dir, f"gpu{i}_1to{upto}{suffix}.png"))
+            plt.close()
+
+    def on_epoch_end(self, epoch, logs=None):
+        # record resources
+        self.cpu_usage.append(psutil.cpu_percent())
+        self.ram_usage.append(psutil.virtual_memory().percent)
+        for idx, u in enumerate(self._get_gpu_utils()):
+            self.gpu_usage.setdefault(idx, []).append(u)
+
+        if (epoch + 1) % self.interval == 0:
+            suffix = f"_ep{epoch+1}"
+            self._plot_metrics(epoch+1, suffix)
+            self._plot_resources(epoch+1, suffix)
+
+    def on_train_end(self, logs=None):
+        total = len(self.model.history.history["loss"])
+        self._plot_metrics(total, "_final")
+        self._plot_resources(total, "_final")
+        
+class SamplePrediction(Callback):
+    def __init__(self, val_ds, tokenizer, max_len, samples=1, save_path="sample_pred.png"):
+        super().__init__()
+        
+        self.val_ds = val_ds.take(1).unbatch().batch(samples)
+        self.tokenizer = tokenizer
+        self.start_id   = tgt_tokenizer.word_index.get('<start>', tgt_tokenizer.word_index[tgt_tokenizer.oov_token])
+        self.end_id     = tgt_tokenizer.word_index.get('<end>',   tgt_tokenizer.word_index[tgt_tokenizer.oov_token])
+        self.max_length = max_len
+        self.save_path = save_path
+
+    def on_train_end(self, logs=None):
+      
+        for (enc, _), _ in self.val_ds:
+            
+            dec_in = tf.fill([enc.shape[0], 1], self.start_id)
+            result = []
+         
+            for _ in range(self.max_length):
+                pad_len = self.max_length - dec_in.shape[1]
+                logits = self.model([enc, tf.pad(dec_in, [[0,0],[0,pad_len]])],
+                                    training=False)
+                next_tok = tf.argmax(logits[:, -1, :], axis=-1, output_type=tf.int32)
+                dec_in = tf.concat([dec_in, next_tok[:,None]], axis=1)
+                result.append(next_tok)
+            preds = tf.stack(result, axis=1).numpy()
+
+            # only take the first sample for display
+            pred_seq = preds[0]
+            # cut off at the first <end> token
+            if self.end_id in pred_seq:
+                cut = list(pred_seq).index(self.end_id)
+                pred_seq = pred_seq[:cut]
+
+            
+            words = [ self.tokenizer.index_word.get(int(w), "<OOV>")
+                      for w in pred_seq
+                      if w not in (0, self.start_id) ]
+            text = " ".join(words)
+
+            
+            plt.figure(figsize=(8, 1.5))
+            plt.text(0.5, 0.5, text, ha="center", va="center", wrap=True, fontsize=12)
+            plt.axis("off")
+            plt.tight_layout()
+            plt.savefig(self.save_path, dpi=150)
+            plt.close()
+
+            print(f" Saved sample prediction to {self.save_path}")
+            break
+
+class RougeCallback(Callback):
+    def __init__(self, val_ds, tgt_tokenizer, max_length_target, n_samples):
+        super().__init__()
+        self.val_ds     = val_ds
+        self.tokenizer  = tgt_tokenizer
+        self.start_id   = tgt_tokenizer.word_index.get('<start>', tgt_tokenizer.word_index[tgt_tokenizer.oov_token])
+        self.end_id     = tgt_tokenizer.word_index.get('<end>',   tgt_tokenizer.word_index[tgt_tokenizer.oov_token])
+        self.max_length = max_length_target
+        self.scorer     = rouge_scorer.RougeScorer(
+            ['rouge1','rouge2','rougeL'], use_stemmer=True
+        )
+        self.n_samples  = n_samples
+        
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        (enc_batch, _), dec_tgt_batch = next(iter(self.val_ds))
+        total = {'rouge1': 0.0, 'rouge2': 0.0, 'rougeL': 0.0}
+        batch = tf.shape(enc_batch)[0]
+
+        dec_input = tf.fill([batch, 1], self.start_id)
+        result    = tf.zeros([batch, 0], dtype=tf.int32)
+        for t in range(self.max_length):
+            pad_amt    = self.max_length - tf.shape(dec_input)[1]
+            dec_padded = tf.pad(dec_input, [[0,0],[0,pad_amt]])
+            logits     = self.model([enc_batch, dec_padded], training=False)
+            next_token = tf.cast(tf.argmax(logits[:, t, :], axis=-1), tf.int32)
+            dec_input  = tf.concat([dec_input, next_token[:, None]], axis=1)
+            result     = tf.concat([result,    next_token[:, None]], axis=1)
+
+   
+        count = 0
+        for ref_seq, pred_seq in zip(dec_tgt_batch.numpy(), result.numpy()):
+            ref_txt  = " ".join(
+                self.tokenizer.index_word[w]
+                for w in ref_seq 
+                if w not in (0, self.start_id, self.end_id)
+                )
+            pred_txt = " ".join(
+                self.tokenizer.index_word.get(w, "") 
+                for w in pred_seq 
+                if w not in (0, self.start_id, self.end_id)
+                )
+            sc = self.scorer.score(ref_txt, pred_txt)
+            total['rouge1'] += sc['rouge1'].fmeasure
+            total['rouge2'] += sc['rouge2'].fmeasure
+            total['rougeL'] += sc['rougeL'].fmeasure
+            count += 1
+        avg = {k: (total[k] / count if count else 0.0) for k in total}
+        logs.update({f'val_{k}': v for k, v in avg.items()})
+    
+
+class SaveOnAnyImprovement(tf.keras.callbacks.Callback):
+    def __init__(self, filepath):
+        super().__init__()
+        self.filepath = filepath
+        # we'll keep track of the best seen for each monitored metric
+        self.best = {}
+
+    
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        any_improved = False
+        improvements = []
+
+        # scan through all logged metrics
+        for name, value in logs.items():
+            # only consider validation metrics here
+            if not name.startswith("val_") :
+                continue
+
+            # decide if higher-is-better or lower-is-better
+            is_loss = name.endswith("loss")
+            best_val = self.best.get(name, np.inf if is_loss else -np.inf)
+
+
+            improved = (value < best_val) if is_loss else (value > best_val)
+            if improved:
+                self.best[name] = value
+                any_improved = True
+                arrow = "↓" if is_loss else "↑"
+                improvements.append(f"{name} {arrow} {value:.4f}")
+
+        if any_improved:
+            self.model.save(self.filepath)
+            print(
+                f"✔️ Saved model at epoch {epoch+1} because " +
+                ", ".join(improvements)
+            )
 
 class CustomEval(Callback):
-    def __init__(self, val_ds):
+    def __init__(self, val_ds, strategy):
         super().__init__()
         self.val_ds = val_ds
-    def on_epoch_end(self, epoch, logs=None):
-        total, correct = 0, 0
-        for (enc_in, dec_in), dec_tgt in self.val_ds:
-            preds = self.model.predict([enc_in, dec_in])
-            idx = np.argmax(preds, axis=-1)
-            mask = dec_tgt != 0
-            correct += np.sum((idx == dec_tgt) & mask)
-            total += np.sum(mask)
-        print(f"Validation Token Accuracy: {correct/total:.4f}")
+        self.strategy = strategy
 
-def train_model(data_path, epochs=10, batch_size=64, emb_dim=50):
+    @tf.function
+    def _eval_step(self, enc, dec_in, dec_tgt):
+        preds = self.model([enc, dec_in], training=False)
+        mask  = tf.cast(tf.not_equal(dec_tgt, 0), tf.float32)
+        acc   = tf.keras.metrics.sparse_categorical_accuracy(dec_tgt, preds)
+        return tf.reduce_sum(acc * mask), tf.reduce_sum(mask)
+
+    def on_epoch_end(self, epoch, logs=None):
+        total_correct = 0.0
+        total_count   = 0.0
+        for (enc, dec_in), dec_tgt in self.val_ds:
+            c, n = self._eval_step(enc, dec_in, dec_tgt)
+            total_correct += c
+            total_count   += n
+        token_acc = total_correct / total_count
+        logs = logs or {}
+        logs['val_token_accuracy'] = token_acc
+        print(f"Validation token accuracy: {token_acc:.4f}")
+
+
+def train_model(data_path, epochs=10, batch_size=384, emb_dim=50, train_from_scratch = False):
     inputs, targets = load_training_data(data_path)
     split = int(0.9 * len(inputs))
+    save_dir     = "app/models/saved_model"
+    tok_in_path  = f"{save_dir}/tokenizer_input.json"
+    tok_tgt_path = f"{save_dir}/tokenizer_target.json"
+    model_path   = f"{save_dir}/summarization_model.keras"
+    
+    os.makedirs(save_dir, exist_ok=True)
+    
     train_in, train_tgt = inputs[:split], targets[:split]
     val_in, val_tgt = inputs[split:], targets[split:]
-
-    tok_in_path = "app/models/saved_model/tokenizer_input.json"
-    tok_tgt_path = "app/models/saved_model/tokenizer_target.json"
+    
     if os.path.exists(tok_in_path) and os.path.exists(tok_tgt_path):
         tok_in = load_tokenizer(tok_in_path)
         tok_tgt = load_tokenizer(tok_tgt_path)
     else:
-        tok_in = create_tokenizer(inputs)
-        tok_tgt = create_tokenizer(targets)
+        tok_in = create_tokenizer(inputs, max_words=MAX_VOCAB, add_special_tokens=False)
+        tok_tgt = create_tokenizer(targets, max_words=MAX_VOCAB, add_special_tokens=True)
 
-    vs_in = len(tok_in.word_index) + 1
-    vs_tgt = len(tok_tgt.word_index) + 1
+    vs_in = min(len(tok_in.word_index) + 1, MAX_VOCAB + 1)
+    vs_tgt = min(len(tok_tgt.word_index) + 1, MAX_VOCAB + 1)
 
-    train_enc = preprocess_texts(train_in, tok_in, max_length_input)
-    train_dec = preprocess_texts(train_tgt, tok_tgt, max_length_target)
+    train_enc = preprocess_texts(train_in, tok_in,  max_length_input,  vs_in)
+    train_dec = preprocess_texts(train_tgt, tok_tgt, max_length_target, vs_tgt)
     train_dec_in, train_dec_tgt = prepare_decoder_sequences(train_dec)
 
-    val_enc = preprocess_texts(val_in, tok_in, max_length_input)
-    val_dec = preprocess_texts(val_tgt, tok_tgt, max_length_target)
+    val_enc = preprocess_texts(val_in,  tok_in,  max_length_input,  vs_in)
+    val_dec = preprocess_texts(val_tgt, tok_tgt, max_length_target, vs_tgt)
     val_dec_in, val_dec_tgt = prepare_decoder_sequences(val_dec)
 
-    train_ds = tf.data.Dataset.from_tensor_slices(((train_enc, train_dec_in), train_dec_tgt))
-    val_ds = tf.data.Dataset.from_tensor_slices(((val_enc, val_dec_in), val_dec_tgt))
 
-    train_ds = train_ds.shuffle(1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    val_ds = val_ds.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    num_train = len(train_enc)
+    steps_per_epoch = max(1, num_train // batch_size)
+    train_ds = (
+        tf.data.Dataset
+        .from_tensor_slices(((train_enc, train_dec_in), train_dec_tgt))
+        .shuffle(buffer_size=steps_per_epoch, seed=42)
+        .batch(batch_size, drop_remainder=True)
+        .repeat()
+        .prefetch(tf.data.AUTOTUNE)
+    )
 
-    model_path = "app/models/saved_model/summarization_model.keras"
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    if os.path.exists(model_path):
-        print("Loading model from disk")
-        model = load_model(model_path)
-    else:
-        model = build_seq2seq_model(vs_in, vs_tgt, emb_dim, max_length_input, max_length_target)
+    val_ds = (
+        tf.data.Dataset
+          .from_tensor_slices(((val_enc, val_dec_in), val_dec_tgt))
+          .batch(batch_size, drop_remainder=False)
+          .prefetch(tf.data.AUTOTUNE)
+    )
+    val_steps = max(1, len(val_enc) // batch_size
+                   + (1 if len(val_enc) % batch_size else 0))
+    
+    n_rouge = 100
+    rouge_ds = (
+        tf.data.Dataset
+        .from_tensor_slices(((val_enc, val_dec_in), val_dec_tgt))
+        .shuffle(len(val_enc))            
+        .take(n_rouge) 
+        .cache()
+        .batch(n_rouge, drop_remainder=False) 
+        .prefetch(tf.data.AUTOTUNE)
+    )
+    
+    
+    
+    strategy = tf.distribute.MirroredStrategy()
+    with strategy.scope(): 
+        if (not train_from_scratch) and os.path.exists(model_path):
+            print("Loading model from disk")
+            model = tf.keras.models.load_model(
+            model_path,
+            custom_objects={
+                'Attention': Attention,
+                'ExponentialDecay': ExponentialDecay,
+            }
+            )
+        else:
+            model = build_seq2seq_model(
+            vs_in, vs_tgt, emb_dim,
+            max_length_input, max_length_target
+            )
 
-    callbacks = [
-        EarlyStopping(monitor='loss', patience=3, restore_best_weights=True),
-        ModelCheckpoint(model_path, save_best_only=True, verbose=1),
-        CustomEval(val_ds)
-    ]
+        lr_schedule = ExponentialDecay(
+            initial_learning_rate=5e-5,
+            decay_steps=20_000,
+            decay_rate=0.98,
+            staircase=True
+            )
 
-    with tf.device('/GPU:0'):
-        history = model.fit(train_ds, epochs=epochs, verbose=2, callbacks=callbacks, validation_data=val_ds)
+        base_opt = Adam(learning_rate=lr_schedule)
+        opt = tf.keras.mixed_precision.LossScaleOptimizer(base_opt, dynamic=True)
+        model.compile(
+            optimizer=opt,
+            loss="sparse_categorical_crossentropy",
+            metrics=[
+                tf.keras.metrics.SparseCategoricalAccuracy(name="token_accuracy")
+                ]      
+            )
+        (enc_batch, dec_in_batch), dec_tgt_batch = next(iter(train_ds))
+        logits = model([enc_batch, dec_in_batch], training=False)
+        print("Output logits stats:",
+              tf.reduce_min(logits).numpy(),
+              tf.reduce_max(logits).numpy(),
+              "any NaN?", tf.reduce_any(tf.math.is_nan(logits)).numpy())
+        print(">>> Global policy:", tf.keras.mixed_precision.global_policy().name)
+        print(">>> Optimizer class:", type(model.optimizer).__name__)
+     
+        snap_cb = SnapshotCallback(
+            save_dir="app/models/saved_model/plots",
+            interval_epochs=10
+            )
+        rouge_cb = RougeCallback(
+            val_ds=rouge_ds,
+            tgt_tokenizer=tok_tgt,         
+            max_length_target=max_length_target,
+            n_samples=n_rouge
+        )
 
+        
+
+        save_cb  = SaveOnAnyImprovement(model_path)
+        
+
+        callbacks = [
+            rouge_cb,
+            EarlyStopping(
+                monitor='val_token_accuracy',   
+                mode='max',
+                patience=5,
+                restore_best_weights=True
+                ),
+                save_cb,
+                snap_cb,         
+        ]
+        history = model.fit(
+            train_ds,
+            epochs=epochs,
+            verbose=2,
+            callbacks=callbacks,
+            steps_per_epoch=steps_per_epoch,
+            validation_data=val_ds,
+            validation_steps=val_steps
+            )
+
+
+
+    # after training: save tokenizers, plot history, return model
     with open(tok_in_path, 'w', encoding='utf-8') as f:
         f.write(tok_in.to_json())
+        f.flush()                # push Python buffer to OS
+        os.fsync(f.fileno()) 
     with open(tok_tgt_path, 'w', encoding='utf-8') as f:
         f.write(tok_tgt.to_json())
+        f.flush()                # push Python buffer to OS
+        os.fsync(f.fileno()) 
 
     plot_history(history, os.path.dirname(model_path))
     return model
 
 if __name__ == "__main__":
-    model = train_model("app/models/data/text/training_data.json")
+    import sys
+    data_path = sys.argv[1] if len(sys.argv) > 1 else "app/models/data/text/training_data.json"
+    model = train_model(data_path)
     print("Training complete.")
+    print("Model saved to:", "app/models/saved_model/summarization_model.keras")
+    print("Input tokenizer saved to:", "app/models/saved_model/tokenizer_input.json") 
