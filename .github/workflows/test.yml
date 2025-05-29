@@ -36,4 +36,6 @@ jobs:
         run: sleep 10
 
       - name: Run test script
+      - name: Run Flake8 with config
+        run: flake8 --config=.flake8 .
         run: python test_summary_api.py
