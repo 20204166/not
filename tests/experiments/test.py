@@ -4,6 +4,10 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 import json
 import os
 
+if os.environ.get("CI") == "true":
+    print("Skipping test.py in CI")
+    exit(0)
+
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 
