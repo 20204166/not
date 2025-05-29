@@ -1,0 +1,39 @@
+name: Summarizer API Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install flask
+
+      - name: Run Flask app in background
+        run: |
+          export FLASK_APP=run.py
+          nohup flask run --host=0.0.0.0 --port=3000 &
+
+      - name: Wait for app to be ready
+        run: sleep 10
+
+      - name: Run test script
+        run: python test_summary_api.py
