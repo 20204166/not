@@ -34,9 +34,10 @@ jobs:
         run: |
           pip install flake8
           echo "Flake8 config hash: $(md5sum .flake8)"
-          flake8 --config=.flake8 .
-
-
+          flake8 --config=.flake8
+      - name: Set CI flag
+        run: export CI=true
+.
       - name: Run tests
         run: |
           pip install pytest
