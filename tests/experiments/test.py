@@ -6,9 +6,11 @@ import os
 
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
+
 def load_tokenizer(tokenizer_path: str):
     """
     Load a Tokenizer from a JSON file.
+
     Args:
         tokenizer_path (str): Path to the tokenizer JSON file.
 
@@ -18,6 +20,7 @@ def load_tokenizer(tokenizer_path: str):
     with open(tokenizer_path, "r", encoding="utf-8") as f:
         tokenizer_json = f.read()
     return tf.keras.preprocessing.text.tokenizer_from_json(tokenizer_json)
+
 
 def generate_summary_inference(model, tokenizer_input, tokenizer_target, input_text: str,
                                max_length_input: int, max_length_target: int) -> str:
@@ -115,13 +118,14 @@ def qualitative_review(model_path: str, tokenizer_input_path: str,
         max_length_input, max_length_target
     )
 
+
 if __name__ == "__main__":
     model_path = "app/models/saved_model/summarization_model.keras"
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
     tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
     max_length_input = 50
     max_length_target = 20
-    
+
     qualitative_review(
         model_path,
         tokenizer_input_path,
@@ -129,4 +133,3 @@ if __name__ == "__main__":
         max_length_input,
         max_length_target
     )
-
