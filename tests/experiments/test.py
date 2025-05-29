@@ -134,13 +134,15 @@ def qualitative_review(model_path: str, tokenizer_input_path: str, tokenizer_tar
     interactive_review(model, tokenizer_input, tokenizer_target, max_length_input, max_length_target)
 
 if __name__ == "__main__":
-    # Define paths for the saved model and tokenizers (must match training script)
     model_path = "app/models/saved_model/summarization_model.keras"
     tokenizer_input_path = "app/models/saved_model/tokenizer_input.json"
     tokenizer_target_path = "app/models/saved_model/tokenizer_target.json"
-    
-    # Set maximum sequence lengths (must match training configuration)
     max_length_input = 50
     max_length_target = 20
-    
-    qualitative_review(model_path, tokenizer_input_path, tokenizer_target_path, max_length_input, max_length_target)
+    qualitative_review(
+        model_path,
+        tokenizer_input_path,
+        tokenizer_target_path,
+        max_length_input,
+        max_length_target
+    )
