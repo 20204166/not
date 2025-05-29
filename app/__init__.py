@@ -30,41 +30,31 @@ def create_app():
         app.logger.error(f"Failed to load model/tokenizers: {e}")
         raise
 
-    # ─── Build Hugging-Face summarization pipeline (CPU) ────────────────
-    from transformers import pipeline
-    summarizer = pipeline(
-        "summarization",
-        model=summarization_model,
-        tokenizer=tok_input,
-        framework="tf",
-        device=-1
-    )
-
-    # ─── Store in config for use in your views ──────────────────────────
+    # ─── Token index helpers ─────────────────────────────────────────────
     widx = tok_target.word_index
     start_i = widx.get("<start>", widx.get("start"))
     end_i   = widx.get("<end>",   widx.get("end"))
 
+    # ─── Store everything in Flask config ────────────────────────────────
     app.config.update({
-        "SUMMARIZER":         summarizer,
-        "SUMMARY_MODEL":      summarization_model,
+        "SUMMARIZER":         summarization_model,
         "TOK_INPUT":          tok_input,
         "TOK_TARGET":         tok_target,
         "START_TOKEN_INDEX":  start_i,
         "END_TOKEN_INDEX":    end_i,
-        "MAX_LENGTH_INPUT":   int(app.config.get("MAX_LENGTH_INPUT", 50)),
-        "MAX_LENGTH_TARGET":  int(app.config.get("MAX_LENGTH_TARGET", 20)),
+        "MAX_INPUT_LEN":      int(app.config.get("MAX_LENGTH_INPUT", 50)),
+        "MAX_TARGET_LEN":     int(app.config.get("MAX_LENGTH_TARGET", 20)),
     })
 
-    # ─── Initialize extensions ──────────────────────────────────────────
+    # ─── Initialize extensions ───────────────────────────────────────────
     db.init_app(app)
     ma.init_app(app)
 
-    # ─── Register your REST blueprint under /api/notes ──────────────────
+    # ─── Register blueprint ──────────────────────────────────────────────
     from app.blueprints.notes import notes_bp
     app.register_blueprint(notes_bp, url_prefix="/api/notes")
 
-    # ─── Health-check endpoint ─────────────────────────────────────────
+    # ─── Health-check endpoint ───────────────────────────────────────────
     @app.route("/healthz", methods=["GET"])
     def healthz():
         return jsonify(status="ok"), 200
