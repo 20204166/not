@@ -40,3 +40,4 @@ This project is licensed under a **Custom License** © 2024 Bekithemba Ncube.
 Use is permitted for personal, non-commercial, and educational purposes only.  
 **Redistribution or resale is prohibited.**
 
+View the full license [here](./LICENSE).
