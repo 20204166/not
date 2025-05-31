@@ -10,6 +10,8 @@ visual_ai_bp = Blueprint('visual_ai', __name__, url_prefix='/ai')
 
 # Store files in a local folder (or switch to DB later)
 STORAGE_PATH = "./ai_models"
+NODE_LIBRARY_PATH = "./services/node_library.json"
+
 os.makedirs(STORAGE_PATH, exist_ok=True)
 
 @visual_ai_bp.route('/create', methods=['POST'])
@@ -55,3 +57,12 @@ def list_models():
     model_files = [f for f in files if f.endswith(".json") and not f.endswith("_logs.json")]
     models = [{"model_id": f.replace(".json", "")} for f in model_files]
     return jsonify(models)
+
+
+@visual_ai_bp.route('/nodes/library', methods=['GET'])
+def get_node_library():
+    try:
+        with open(NODE_LIBRARY_PATH, "r") as f:
+            return jsonify(json.load(f))
+    except FileNotFoundError:
+        return jsonify({"error": "Node library not found"}), 404
