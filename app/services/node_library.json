@@ -1,1 +1,19 @@
-
+{
+  "nodes": [
+    {
+      "type": "input",
+      "label": "\ud83d\udfe2 Input Node",
+      "code": "return { value: 1.0 }"
+    },
+    {
+      "type": "processing",
+      "label": "\ud83d\udd35 LSTM Cell",
+      "code": "h_t = tanh(c_t + x_t)"
+    },
+    {
+      "type": "output",
+      "label": "\ud83d\udd34 Output Node",
+      "code": "final_output = h_t"
+    }
+  ]
+}
