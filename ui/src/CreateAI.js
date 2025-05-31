@@ -1,97 +1,55 @@
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
+  addEdge,
   MiniMap,
   Controls,
   Background,
-  addEdge,
   useNodesState,
   useEdgesState,
-  useReactFlow,
-  ReactFlowProvider,
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-const nodeLibrary = [
-  { label: "🟢 Input", type: "input", code: "return { value: 1 }", category: "IO" },
-  { label: "🔴 Output", type: "output", code: "return final_output", category: "IO" },
-  { label: "🔁 LSTM", type: "default", code: "h_t = tanh(c_t + x_t)", category: "Layers" },
-  { label: "🧠 Dense", type: "default", code: "y = Wx + b", category: "Layers" },
-  { label: "⚡ ReLU", type: "default", code: "return max(0, x)", category: "Activations" },
+const initialNodes = [
+  {
+    id: "1",
+    type: "input",
+    data: { label: "🟢 Input Node", code: "return { value: 1.0 }" },
+    position: { x: 250, y: 5 },
+  },
+  {
+    id: "2",
+    data: { label: "🔵 LSTM Cell", code: "h_t = tanh(c_t + x_t)" },
+    position: { x: 100, y: 100 },
+  },
+  {
+    id: "3",
+    type: "output",
+    data: { label: "🔴 Output Node", code: "final_output = h_t" },
+    position: { x: 400, y: 200 },
+  },
 ];
 
-const Sidebar = ({ onDragStart }) => (
-  <div style={{ padding: 10, width: 200, backgroundColor: "#1e1e2f", color: "white" }}>
-    <h3>📚 Node Library</h3>
-    {nodeLibrary.map((node, i) => (
-      <div
-        key={i}
-        draggable
-        onDragStart={(e) => onDragStart(e, node)}
-        style={{ padding: "6px", margin: "4px 0", border: "1px solid #ccc", cursor: "grab" }}
-      >
-        {node.label}
-      </div>
-    ))}
-  </div>
-);
+const initialEdges = [
+  { id: "e1-2", source: "1", target: "2" },
+  { id: "e2-3", source: "2", target: "3" },
+];
 
-const FlowCanvas = () => {
-  const reactFlowWrapper = useRef(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { project } = useReactFlow();
-  const lastNodeRef = useRef(null);
+const CreateAI = () => {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodeLibrary, setNodeLibrary] = useState([]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
-  const onDragStart = (event, node) => {
-    event.dataTransfer.setData("application/reactflow", JSON.stringify(node));
-    event.dataTransfer.effectAllowed = "move";
-  };
-
-  const onDrop = (event) => {
-    event.preventDefault();
-    const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-    const nodeData = JSON.parse(event.dataTransfer.getData("application/reactflow"));
-
-    const position = project({
-      x: event.clientX - reactFlowBounds.left,
-      y: event.clientY - reactFlowBounds.top,
-    });
-
-    const newNode = {
-      id: `${+new Date()}`,
-      type: nodeData.type,
-      position,
-      data: { label: nodeData.label, code: nodeData.code },
-    };
-
-    setNodes((nds) => [...nds, newNode]);
-
-    if (lastNodeRef.current) {
-      setEdges((eds) =>
-        addEdge({ id: `e${lastNodeRef.current}-${newNode.id}`, source: lastNodeRef.current, target: newNode.id }, eds)
-      );
-    }
-
-    lastNodeRef.current = newNode.id;
-  };
-
-  const onDragOver = (event) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  };
-
   const simulateGraph = async () => {
     const graph = {
       nodes: nodes.map((node) => ({
         id: node.id,
-        type: node.type,
-        code: node.data.code,
+        type: node.data.label.replace(/[^a-zA-Z0-9]/g, "_"),
         params: {},
         inputs: edges.filter((e) => e.target === node.id).map((e) => e.source),
         outputs: edges.filter((e) => e.source === node.id).map((e) => e.target),
@@ -99,60 +57,94 @@ const FlowCanvas = () => {
       edges: edges.map((e) => ({ from: e.source, to: e.target })),
     };
 
-    const res = await fetch("/ai/train", {
+    const response = await fetch("/ai/train", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model_id: "demo", dataset: "demo", graph }),
+      body: JSON.stringify({ model_id: "demo-model", dataset: "demo-dataset", graph }),
     });
 
-    console.log(await res.json());
+    const result = await response.json();
+    console.log("Simulation result:", result);
   };
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <div style={{ backgroundColor: "#1f2937", color: "#fff", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <strong>AI Builder</strong>
-        </div>
-        <div>
-          <button style={{ marginRight: 8 }}>⚙️ Settings</button>
-          <button style={{ marginRight: 8 }}>💾 Save</button>
-          <button style={{ marginRight: 8 }}>📤 Export</button>
-          <button onClick={simulateGraph}>▶ Simulate</button>
-        </div>
-      </div>
+  const addNode = (libraryNode) => {
+    const id = (nodes.length + 1).toString();
+    const newNode = {
+      id,
+      type: libraryNode.type || "default",
+      data: { label: libraryNode.label, code: libraryNode.code },
+      position: { x: Math.random() * 250, y: Math.random() * 250 },
+    };
+    setNodes((nds) => [...nds, newNode]);
+  };
 
-      <div style={{ display: "flex", flex: 1, backgroundColor: "#0f172a" }}>
-        <Sidebar onDragStart={onDragStart} />
-        <div
-          ref={reactFlowWrapper}
-          className="reactflow-wrapper"
-          style={{ flexGrow: 1, height: "100%" }}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-        >
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            fitView
+  useEffect(() => {
+    fetch("/nodes/library")
+      .then((res) => res.json())
+      .then((data) => setNodeLibrary(data))
+      .catch((err) => console.error("Failed to load node library:", err));
+  }, []);
+
+  return (
+    <div style={{ display: "flex", height: "100vh" }}>
+      <div style={{ width: "20%", backgroundColor: "#111827", color: "#fff", padding: "1rem" }}>
+        <h2>📚 Node Library</h2>
+        {nodeLibrary.map((node, index) => (
+          <button
+            key={index}
+            onClick={() => addNode(node)}
+            style={{
+              display: "block",
+              width: "100%",
+              margin: "0.5rem 0",
+              background: "#1f2937",
+              border: "1px solid #374151",
+              padding: "0.5rem",
+              color: "#fff",
+              textAlign: "left",
+              cursor: "pointer",
+              borderRadius: "4px",
+            }}
           >
-            <MiniMap />
-            <Controls />
-            <Background />
-          </ReactFlow>
-        </div>
+            {node.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ flexGrow: 1, backgroundColor: "#1e1e2f" }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          fitView
+          style={{ background: "#0f172a", color: "#fff", height: "100%" }}
+        >
+          <MiniMap nodeColor={() => "#10b981"} maskColor="#1f2937" />
+          <Controls />
+          <Background color="#334155" gap={16} />
+        </ReactFlow>
+        <button
+          onClick={simulateGraph}
+          style={{
+            position: "absolute",
+            top: 10,
+            left: "22%",
+            zIndex: 10,
+            padding: "10px 16px",
+            background: "#4f46e5",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+          }}
+        >
+          ▶ Simulate
+        </button>
       </div>
     </div>
   );
 };
-
-const CreateAI = () => (
-  <ReactFlowProvider>
-    <FlowCanvas />
-  </ReactFlowProvider>
-);
 
 export default CreateAI;
