@@ -61,7 +61,7 @@ def create_app():
 
     # Register blueprints
     from app.blueprints.notes import notes_bp
-    from app.routes.visual_ai import visual_ai_bp
+    from app.blueprints.visual_ai import visual_ai_bp
     app.register_blueprint(notes_bp, url_prefix="/api/notes")
     app.register_blueprint(visual_ai_bp)
 

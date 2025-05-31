@@ -3,7 +3,7 @@
 import os
 import json
 
-STORAGE_PATH = "./ai_models"
+STORAGE_PATH = "./models"
 os.makedirs(STORAGE_PATH, exist_ok=True)
 
 def save_ai_model(model_id, data):
