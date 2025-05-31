@@ -1,9 +1,9 @@
+
 import logging
 import os
 import tensorflow as tf
 from flask import Flask, jsonify
 
-# Centralized config class and extensions
 from .config import Config
 from .extensions import db, ma
 
@@ -12,13 +12,12 @@ def load_tokenizer(path: str):
         return tf.keras.preprocessing.text.tokenizer_from_json(f.read())
 
 def create_app():
-    """Application factory."""
     app = Flask(__name__, instance_relative_config=False)
 
-    # ─── Load typed, central config ───────────────────────────────────────
+    # Load configuration
     app.config.from_object(Config)
 
-    # ─── Load TF model + tokenizers with error handling ─────────────────
+    # Load ML model and tokenizers
     model_path    = app.config["MODEL_PATH"]
     tok_in_path   = app.config["TOKENIZER_INPUT_PATH"]
     tok_out_path  = app.config["TOKENIZER_TARGET_PATH"]
@@ -30,12 +29,11 @@ def create_app():
         app.logger.error(f"Failed to load model/tokenizers: {e}")
         raise
 
-    # ─── Token index helpers ─────────────────────────────────────────────
+    # Token helper setup
     widx = tok_target.word_index
     start_i = widx.get("<start>", widx.get("start"))
     end_i   = widx.get("<end>",   widx.get("end"))
 
-    # ─── Store everything in Flask config ────────────────────────────────
     app.config.update({
         "SUMMARIZER":         summarization_model,
         "TOK_INPUT":          tok_input,
@@ -46,15 +44,17 @@ def create_app():
         "MAX_TARGET_LEN":     int(app.config.get("MAX_LENGTH_TARGET", 20)),
     })
 
-    # ─── Initialize extensions ───────────────────────────────────────────
+    # Initialize Flask extensions
     db.init_app(app)
     ma.init_app(app)
 
-    # ─── Register blueprint ──────────────────────────────────────────────
+    # Register blueprints
     from app.blueprints.notes import notes_bp
+    from app.routes.visual_ai import visual_ai_bp
     app.register_blueprint(notes_bp, url_prefix="/api/notes")
+    app.register_blueprint(visual_ai_bp)
 
-    # ─── Health-check endpoint ───────────────────────────────────────────
+    # Health check endpoint
     @app.route("/healthz", methods=["GET"])
     def healthz():
         return jsonify(status="ok"), 200
