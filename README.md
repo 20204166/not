@@ -31,3 +31,12 @@ AI Note-Taking App is an intelligent application designed to enhance productivit
    ```bash
    git clone https://github.com/20204166/not.git
    cd not
+
+## License
+
+[![License: Custom](https://img.shields.io/badge/license-Custom-lightgrey)](./LICENSE)
+
+This project is licensed under a **Custom License** © 2024 Bekithemba Ncube.  
+Use is permitted for personal, non-commercial, and educational purposes only.  
+**Redistribution or resale is prohibited.**
+
