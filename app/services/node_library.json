@@ -1,19 +1,96 @@
-{
-  "nodes": [
-    {
-      "type": "input",
-      "label": "\ud83d\udfe2 Input Node",
-      "code": "return { value: 1.0 }"
-    },
-    {
-      "type": "processing",
-      "label": "\ud83d\udd35 LSTM Cell",
-      "code": "h_t = tanh(c_t + x_t)"
-    },
-    {
-      "type": "output",
-      "label": "\ud83d\udd34 Output Node",
-      "code": "final_output = h_t"
-    }
-  ]
-}
+[
+  {
+    "label": "🔵 LSTM Cell",
+    "code": "h_t = tanh(c_t + x_t)"
+  },
+  {
+    "label": "🟢 Input Node",
+    "code": "return { value: 1.0 }"
+  },
+  {
+    "label": "🟣 Hidden Node",
+    "code": "return { value: Math.random() }"
+  },
+  {
+    "label": "🟠 Output Layer",
+    "code": "return { output: h_t }"
+  },
+  {
+    "label": "🔵 Loss Calculation",
+    "code": "return Math.abs(predicted - actual)"
+  },
+  {
+    "label": "🟤 Backpropagation",
+    "code": "return gradient * learningRate"
+  },
+  {
+    "label": "🔶 Regularization",
+    "code": "return weight * (1 - decayRate)"
+  },
+  {
+    "label": "🟡 Batch Normalization",
+    "code": "return (x - mean) / Math.sqrt(variance + epsilon)"
+  },
+  {
+    "label": "🔴 Convolutional Layer",
+    "code": "return convolve(input, kernel)"
+  },
+  {
+    "label": "⚫️ Pooling Layer",
+    "code": "return maxPooling(input, poolSize)"
+  },
+  {
+    "label": "🟣 Softmax Activation",
+    "code": "return exp(x) / sum(exp(x))"
+  },
+  {
+    "label": "🟤 Gradient Descent",
+    "code": "return weights - learningRate * gradient"
+  },
+  {
+    "label": "🔶 Learning Rate Scheduler",
+    "code": "return initialRate * decayFactor^epoch"
+  },
+  {
+    "label": "🟡 Output Node",
+    "code": "return { value: 0.5 }"
+  },
+  {
+    "label": "🔴 Recurrent Node",
+    "code": "return { value: 0.8 }"
+  },
+  {
+    "label": "⚫️ Activation Function",
+    "code": "return Math.sigmoid(x)"
+  },
+  {
+    "label": "🟣 Loss Function",
+    "code": "return Math.pow(predicted - actual, 2)"
+  },
+  {
+    "label": "🟤 Optimizer",
+    "code": "return learningRate * gradient"
+  },
+  {
+    "label": "🔶 Dropout Layer",
+    "code": "return x * (Math.random() > dropoutRate ? 1 : 0)"
+  },
+  {
+    "label": "🟡 Batch Size",
+    "code": "return Math.ceil(totalSamples / batchSize)"
+  },
+  {
+    "label": "🔴 Epochs",
+    "code": "return totalIterations / batchSize"
+  },
+  {
+    "label": "⚫️ Model Evaluation",
+    "code": "return accuracy * 100 + '%'"
+  },
+  {
+    "label": "🟣 Data Augmentation",
+    "code": "return augment(image, transformations)"
+  },
+  {}
+]
+

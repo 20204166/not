@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   addEdge,
@@ -10,34 +9,9 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 
-const initialNodes = [
-  {
-    id: "1",
-    type: "input",
-    data: { label: "🟢 Input Node", code: "return { value: 1.0 }" },
-    position: { x: 250, y: 5 },
-  },
-  {
-    id: "2",
-    data: { label: "🔵 LSTM Cell", code: "h_t = tanh(c_t + x_t)" },
-    position: { x: 100, y: 100 },
-  },
-  {
-    id: "3",
-    type: "output",
-    data: { label: "🔴 Output Node", code: "final_output = h_t" },
-    position: { x: 400, y: 200 },
-  },
-];
-
-const initialEdges = [
-  { id: "e1-2", source: "1", target: "2" },
-  { id: "e2-3", source: "2", target: "3" },
-];
-
 const CreateAI = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [nodeLibrary, setNodeLibrary] = useState([]);
 
   const onConnect = useCallback(
@@ -57,10 +31,14 @@ const CreateAI = () => {
       edges: edges.map((e) => ({ from: e.source, to: e.target })),
     };
 
-    const response = await fetch("/ai/train", {
+    const response = await fetch("/api/notes/ai/train", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model_id: "demo-model", dataset: "demo-dataset", graph }),
+      body: JSON.stringify({
+        model_id: "demo-model",
+        dataset: "demo-dataset",
+        graph,
+      }),
     });
 
     const result = await response.json();
@@ -68,18 +46,22 @@ const CreateAI = () => {
   };
 
   const addNode = (libraryNode) => {
-    const id = (nodes.length + 1).toString();
+    const id = `${nodes.length + 1}`;
     const newNode = {
       id,
       type: libraryNode.type || "default",
       data: { label: libraryNode.label, code: libraryNode.code },
-      position: { x: Math.random() * 250, y: Math.random() * 250 },
+      position: {
+        x: Math.random() * 200 + 100,
+        y: Math.random() * 200 + 100,
+      },
     };
     setNodes((nds) => [...nds, newNode]);
   };
 
   useEffect(() => {
-    fetch("/nodes/library")
+    // ✅ Load node library from backend
+    fetch("/api/notes/nodes/library")
       .then((res) => res.json())
       .then((data) => setNodeLibrary(data))
       .catch((err) => console.error("Failed to load node library:", err));
@@ -110,7 +92,7 @@ const CreateAI = () => {
           </button>
         ))}
       </div>
-      <div style={{ flexGrow: 1, backgroundColor: "#1e1e2f" }}>
+      <div style={{ flexGrow: 1, backgroundColor: "#1e1e2f", position: "relative" }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -118,7 +100,7 @@ const CreateAI = () => {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           fitView
-          style={{ background: "#0f172a", color: "#fff", height: "100%" }}
+          style={{ background: "#0f172a", height: "100%" }}
         >
           <MiniMap nodeColor={() => "#10b981"} maskColor="#1f2937" />
           <Controls />

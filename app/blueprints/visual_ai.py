@@ -10,7 +10,8 @@ visual_ai_bp = Blueprint('visual_ai', __name__, url_prefix='/ai')
 
 # Store files in a local folder (or switch to DB later)
 STORAGE_PATH = "./ai_models"
-NODE_LIBRARY_PATH = "./services/node_library.json"
+NODE_LIBRARY_PATH ="app/services/node_library.json"
+
 
 os.makedirs(STORAGE_PATH, exist_ok=True)
 
