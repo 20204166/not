@@ -1,6 +1,6 @@
 
 import numpy as np
-from app.services.node_registry import get_node_handler
+from app.services.plugin_loader import get_node_handler
 
 def run_simulation(graph, dataset_name, timesteps=10):
     nodes = {n["id"]: n for n in graph["nodes"]}
