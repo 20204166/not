@@ -1,3 +1,12 @@
 def run(inputs, state, params):
-    # Input node provides a fixed value (for simulation/testing)
-    return {"value": params.get("value", 0.0)}, state
+    return {"value": params.get("value", 1)}, state
+
+def metadata():
+    return {
+        "label": "Input Node",
+        "category": "developer",
+        "description": "Provides a fixed numeric input",
+        "params": {
+            "value": {"type": "float", "default": 1.0}
+        }
+    }

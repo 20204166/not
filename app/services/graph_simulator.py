@@ -1,4 +1,3 @@
-
 import numpy as np
 from app.services.plugin_loader import get_node_handler
 from collections import defaultdict, deque
@@ -27,7 +26,7 @@ def topological_sort(nodes, edges):
 
     return ordered
 
-def run_simulation(graph, dataset_name, timesteps=10):
+def run_simulation(graph, dataset_name, timesteps=10, autosave=False, preset_name=None):
     nodes = {n["id"]: n for n in graph["nodes"]}
     edges = graph["edges"]
     execution_order = topological_sort(nodes, edges)
@@ -51,7 +50,8 @@ def run_simulation(graph, dataset_name, timesteps=10):
                     from_node = edge["from"]
                     from_port = edge.get("from_port", "default")
                     to_port = edge.get("to_port", from_node)
-                    inputs[to_port] = state[from_node]["outputs"].get(from_port)
+                    val = state[from_node]["outputs"].get(from_port, None)
+                    inputs[to_port] = val
 
             # Run node logic
             prev_state = state[node_id]["mem"]
@@ -59,8 +59,10 @@ def run_simulation(graph, dataset_name, timesteps=10):
 
             try:
                 outputs, new_mem = handler(inputs, prev_state, params)
+                success = True
             except Exception as e:
                 outputs, new_mem = {"error": str(e)}, prev_state
+                success = False
 
             # Save new state and output
             state[node_id]["mem"] = new_mem
@@ -70,9 +72,15 @@ def run_simulation(graph, dataset_name, timesteps=10):
             timestep_log["node_logs"][node_id] = {
                 "inputs": inputs,
                 "outputs": outputs,
-                "state": new_mem
+                "state": new_mem,
+                "success": success
             }
 
         logs.append(timestep_log)
 
-    return logs
+    return {
+        "graph_id": graph.get("id"),
+        "dataset_name": dataset_name,
+        "timesteps": timesteps,
+        "logs": logs
+    }
