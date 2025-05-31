@@ -1,15 +1,36 @@
 
 import numpy as np
 from app.services.plugin_loader import get_node_handler
+from collections import defaultdict, deque
+
+def topological_sort(nodes, edges):
+    in_degree = {nid: 0 for nid in nodes}
+    adj = defaultdict(list)
+
+    for edge in edges:
+        adj[edge["from"]].append(edge["to"])
+        in_degree[edge["to"]] += 1
+
+    queue = deque([nid for nid, deg in in_degree.items() if deg == 0])
+    ordered = []
+
+    while queue:
+        node = queue.popleft()
+        ordered.append(node)
+        for neighbor in adj[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+
+    if len(ordered) != len(nodes):
+        raise ValueError("Graph has cycles or disconnected nodes")
+
+    return ordered
 
 def run_simulation(graph, dataset_name, timesteps=10):
     nodes = {n["id"]: n for n in graph["nodes"]}
     edges = graph["edges"]
-
-    # Build adjacency list for execution order
-    forward_map = {nid: [] for nid in nodes}
-    for edge in edges:
-        forward_map[edge["from"]].append(edge["to"])
+    execution_order = topological_sort(nodes, edges)
 
     # Init state and logs
     state = {nid: {"mem": {}, "outputs": {}} for nid in nodes}
@@ -19,7 +40,8 @@ def run_simulation(graph, dataset_name, timesteps=10):
     for t in range(timesteps):
         timestep_log = {"timestep": t, "node_logs": {}}
 
-        for node_id, node in nodes.items():
+        for node_id in execution_order:
+            node = nodes[node_id]
             handler = get_node_handler(node["type"])
 
             # Gather inputs from previous outputs
@@ -27,12 +49,18 @@ def run_simulation(graph, dataset_name, timesteps=10):
             for edge in edges:
                 if edge["to"] == node_id:
                     from_node = edge["from"]
-                    inputs[from_node] = state[from_node]["outputs"]
+                    from_port = edge.get("from_port", "default")
+                    to_port = edge.get("to_port", from_node)
+                    inputs[to_port] = state[from_node]["outputs"].get(from_port)
 
             # Run node logic
             prev_state = state[node_id]["mem"]
             params = node.get("params", {})
-            outputs, new_mem = handler(inputs, prev_state, params)
+
+            try:
+                outputs, new_mem = handler(inputs, prev_state, params)
+            except Exception as e:
+                outputs, new_mem = {"error": str(e)}, prev_state
 
             # Save new state and output
             state[node_id]["mem"] = new_mem
