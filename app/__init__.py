@@ -1,4 +1,3 @@
-
 import logging
 import os
 import tensorflow as tf
@@ -17,23 +16,35 @@ def create_app():
     # Load configuration
     app.config.from_object(Config)
 
-    # Load ML model and tokenizers
     model_path    = app.config["MODEL_PATH"]
     tok_in_path   = app.config["TOKENIZER_INPUT_PATH"]
     tok_out_path  = app.config["TOKENIZER_TARGET_PATH"]
-    try:
-        summarization_model = tf.keras.models.load_model(model_path)
-        tok_input  = load_tokenizer(tok_in_path)
-        tok_target = load_tokenizer(tok_out_path)
-    except Exception as e:
-        app.logger.error(f"Failed to load model/tokenizers: {e}")
-        raise
 
-    # Token helper setup
-    widx = tok_target.word_index
-    start_i = widx.get("<start>", widx.get("start"))
-    end_i   = widx.get("<end>",   widx.get("end"))
+    summarization_model = None
+    tok_input = None
+    tok_target = None
+    start_i = None
+    end_i = None
 
+    # Load ML model and tokenizers if available
+    if os.path.exists(model_path):
+        try:
+            summarization_model = tf.keras.models.load_model(model_path)
+            tok_input  = load_tokenizer(tok_in_path)
+            tok_target = load_tokenizer(tok_out_path)
+
+            widx = tok_target.word_index
+            start_i = widx.get("<start>", widx.get("start"))
+            end_i   = widx.get("<end>",   widx.get("end"))
+
+            app.logger.info("Model and tokenizers loaded successfully.")
+
+        except Exception as e:
+            app.logger.error(f"Failed to load model/tokenizers: {e}")
+    else:
+        app.logger.warning("Summarizer model not found. Skipping model/tokenizer load.")
+
+    # Update app config (conditionally)
     app.config.update({
         "SUMMARIZER":         summarization_model,
         "TOK_INPUT":          tok_input,
